@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage 
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="RadarApp.MapPage"
+    Title="Mapa"
+    Shell.NavBarIsVisible="False">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="60"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        
+        <Frame Grid.Row="0"
+               BackgroundColor="#2C3E50"
+               CornerRadius="0"
+               Padding="10"
+               HasShadow="True"
+               ZIndex="2">
+            <Grid>
+                <Button x:Name="BtnBurgerMenu"
+                        Text="☰"
+                        FontSize="24"
+                        Clicked="OnBurgerMenuClicked"
+                        BackgroundColor="Transparent"
+                        TextColor="White"
+                        HeightRequest="40"
+                        WidthRequest="40"
+                        Padding="0"
+                        HorizontalOptions="Start"
+                        VerticalOptions="Center"/>
+
+            </Grid>
+        </Frame>
+
+        
+        <WebView x:Name="MapView" Grid.Row="1" ZIndex="0"/>
+
+        
+        <BoxView x:Name="Overlay"
+                 Grid.RowSpan="2"
+                 BackgroundColor="Black"
+                 Opacity="0"
+                 IsVisible="False"
+                 InputTransparent="True"
+                 ZIndex="1"/>
+
+        
+        <Frame x:Name="BurgerMenuFrame"
+               Grid.RowSpan="2"
+               BackgroundColor="#2C3E50"
+               Padding="0"
+               CornerRadius="0"
+               HasShadow="True"
+               TranslationX="-250"
+               WidthRequest="250"
+               HorizontalOptions="Start"
+               VerticalOptions="Fill"
+               IsVisible="False"
+               ZIndex="3">
+            <VerticalStackLayout Spacing="0">
+                
+                <Frame BackgroundColor="#1A252F"
+                       Padding="15"
+                       CornerRadius="0"
+                       Margin="0">
+                    <Grid>
+                        <Label Text="Radari BiH"
+                               FontSize="22"
+                               FontAttributes="Bold"
+                               TextColor="White"
+                               VerticalOptions="Center"
+                               HorizontalOptions="Start"/>
+
+                        <Button x:Name="BtnCloseMenu"
+                                Text="✕"
+                                FontSize="24"
+                                Clicked="OnCloseMenuClicked"
+                                BackgroundColor="Transparent"
+                                TextColor="White"
+                                HeightRequest="40"
+                                WidthRequest="40"
+                                Padding="0"
+                                HorizontalOptions="End"
+                                VerticalOptions="Center"/>
+                    </Grid>
+                </Frame>
+
+                
+                <Button x:Name="BtnLista"
+                        Text="Lista"
+                        BackgroundColor="#95A5A6"
+                        TextColor="White"
+                        Clicked="OnListaClicked"
+                        CornerRadius="0"
+                        Margin="0"
+                        Padding="20,15"
+                        FontSize="16"
+                        HorizontalOptions="Fill"/>
+
+                <Button x:Name="BtnMapa"
+                        Text="Mapa"
+                        BackgroundColor="#3498DB"
+                        TextColor="White"
+                        Clicked="OnMapaClicked"
+                        CornerRadius="0"
+                        Margin="0"
+                        Padding="20,15"
+                        FontSize="16"
+                        HorizontalOptions="Fill"/>
+            </VerticalStackLayout>
+        </Frame>
+    </Grid>
+</ContentPage>

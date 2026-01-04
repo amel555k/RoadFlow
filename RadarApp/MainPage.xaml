@@ -1,0 +1,140 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="RadarApp.MainPage"
+             Title="Radari BiH"
+             Shell.NavBarIsVisible="False">
+    <Grid>
+        <BoxView x:Name="Overlay"
+                 BackgroundColor="Black"
+                 Opacity="0"
+                 IsVisible="False"
+                 InputTransparent="True"/>
+
+        <Grid x:Name="MainContent" Padding="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Frame Grid.Row="0"
+                   BackgroundColor="#ECF0F1"
+                   Padding="10"
+                   Margin="0,0,0,10"
+                   CornerRadius="5">
+                <VerticalStackLayout Spacing="2">
+                    <Grid>
+                        <Button x:Name="BtnBurgerMenu"
+                                Text="☰"
+                                FontSize="24"
+                                Clicked="OnBurgerMenuClicked"
+                                BackgroundColor="Transparent"
+                                TextColor="#2C3E50"
+                                HeightRequest="40"
+                                WidthRequest="40"
+                                Padding="0"
+                                HorizontalOptions="Start"
+                                VerticalOptions="Center"/>
+
+                        <Label Text="Lokacije Radara"
+                               FontSize="20"
+                               FontAttributes="Bold"
+                               TextColor="#2C3E50"
+                               VerticalOptions="Center"
+                               HorizontalOptions="Center"/>
+
+                        <Button x:Name="BtnRefresh"
+                                Text="🔄"
+                                FontSize="18"
+                                Clicked="OnRefreshClicked"
+                                BackgroundColor="Transparent"
+                                TextColor="#27AE60"
+                                BorderColor="#27AE60"
+                                BorderWidth="1"
+                                HeightRequest="40"
+                                WidthRequest="40"
+                                Padding="0"
+                                CornerRadius="20"
+                                HorizontalOptions="End"
+                                VerticalOptions="Center"/>
+                    </Grid>
+                    <Label x:Name="LblDate"
+                           FontSize="20"
+                           TextColor="#7F8C8D"
+                           HorizontalOptions="Center"
+                           Margin="0,0,0,5"
+                           FontAttributes="Bold"/>
+                    <ActivityIndicator x:Name="LoadingIndicator"
+                                       IsRunning="False"
+                                       IsVisible="False"
+                                       Color="#3498DB"
+                                       HorizontalOptions="Center"/>
+                </VerticalStackLayout>
+            </Frame>
+
+            <ScrollView Grid.Row="1">
+                <Frame x:Name="ContentFrame"
+                       BackgroundColor="White"
+                       Padding="15"
+                       CornerRadius="5"
+                       HasShadow="True">
+                    <VerticalStackLayout x:Name="RadarListContainer" Spacing="10"/>
+                </Frame>
+            </ScrollView>
+        </Grid>
+
+        <Frame x:Name="BurgerMenuFrame"
+               BackgroundColor="#2C3E50"
+               Padding="0"
+               CornerRadius="0"
+               HasShadow="True"
+               TranslationX="-250"
+               WidthRequest="250"
+               HorizontalOptions="Start"
+               VerticalOptions="Fill"
+               IsVisible="False">
+            <VerticalStackLayout Spacing="0">
+                <Frame BackgroundColor="#1A252F"
+                       Padding="15"
+                       CornerRadius="0"
+                       Margin="0">
+                    <Grid>
+                        <Button x:Name="BtnCloseMenu"
+                                Text="✕"
+                                FontSize="24"
+                                Clicked="OnCloseMenuClicked"
+                                BackgroundColor="Transparent"
+                                TextColor="White"
+                                HeightRequest="40"
+                                WidthRequest="40"
+                                Padding="0"
+                                HorizontalOptions="End"
+                                VerticalOptions="Center"/>
+                    </Grid>
+                </Frame>
+
+                <Button x:Name="BtnLista"
+                        Text="Lista"
+                        BackgroundColor="#3498DB"
+                        TextColor="White"
+                        Clicked="OnListaClicked"
+                        CornerRadius="0"
+                        Margin="0"
+                        Padding="20,15"
+                        FontSize="16"
+                        HorizontalOptions="Fill"/>
+
+                <Button x:Name="BtnMapa"
+                        Text="Mapa"
+                        BackgroundColor="#95A5A6"
+                        TextColor="White"
+                        Clicked="OnMapaClicked"
+                        CornerRadius="0"
+                        Margin="0"
+                        Padding="20,15"
+                        FontSize="16"
+                        HorizontalOptions="Fill"/>
+            </VerticalStackLayout>
+        </Frame>
+    </Grid>
+</ContentPage>

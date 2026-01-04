@@ -1,0 +1,142 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+}
+
+.filter-buttons {
+    position: absolute;
+    bottom: 30px;
+    left: 20px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.filter-btn {
+    padding: 15px 25px;
+    font-size: 18px;
+    font-weight: bold;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    min-width: 120px;
+}
+
+.filter-btn.active {
+    background-color: #2196F3;
+    color: white;
+}
+
+.filter-btn.inactive {
+    background-color: white;
+    color: #333;
+}
+
+#btnTrackingToggle {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 1000;
+    padding: 15px 30px;
+    font-size: 20px;
+    font-weight: bold;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    background-color: #4CAF50;
+    color: white;
+}
+
+#btnTrackingToggle.active-tracking {
+    background-color: #F44336;
+}
+
+#speedDisplay {
+    position: absolute;
+    bottom: 30px;
+    right: 20px;
+    z-index: 1000;
+    padding: 15px 25px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    text-align: center;
+    display: none;
+    border: 2px solid #333;
+}
+
+#speedValue {
+    font-size: 32px;
+    font-weight: 800;
+    color: #333;
+    display: block;
+    line-height: 1;
+}
+
+#speedUnit {
+    font-size: 14px;
+    color: #666;
+    font-weight: bold;
+    margin-top: 5px;
+    display: block;
+}
+
+.mapboxgl-popup-content {
+    padding: 20px !important;
+    border-radius: 15px !important;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.4) !important;
+    min-width: 220px !important;
+    max-width: 80% !important;
+}
+
+.mapboxgl-popup-content strong {
+    font-size: 20px !important;
+    display: block;
+    margin-bottom: 8px;
+    color: #000;
+}
+
+.mapboxgl-popup-content span {
+    font-size: 18px !important;
+    color: #444;
+    display: block;
+}
+
+.mapboxgl-popup-content .speed-limit {
+    font-size: 18px !important;
+    color: #000;
+    display: block;
+    margin-top: 8px;
+}
+
+.mapboxgl-popup-content .speed-limit-value {
+    font-weight: bold;
+    color: #F44336;
+}
+
+.mapboxgl-popup-close-button {
+    font-size: 28px !important;
+    padding: 5px 10px !important;
+    color: #555;
+    top: 5px;
+    right: 5px;
+    background: transparent;
+    border: none;
+}
+
+.mapboxgl-popup-tip {
+    border-top-width: 12px !important;
+    border-bottom-width: 12px !important;
+}
