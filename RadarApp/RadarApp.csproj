@@ -5,42 +5,48 @@
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.19041.0</TargetFrameworks>
 
     <OutputType>Exe</OutputType>
-    <RootNamespace>RadarApp</RootNamespace>
+    <RootNamespace>RoadFlow</RootNamespace>
     <UseMaui>true</UseMaui>
     <SingleProject>true</SingleProject>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
-    <ApplicationTitle>RadarApp</ApplicationTitle>
-    <ApplicationId>com.companyname.radarapp</ApplicationId>
+    <ApplicationTitle>RoadFlow</ApplicationTitle>
+    <ApplicationId>com.companyname.roadflow</ApplicationId>
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
 
     <WindowsPackageType>None</WindowsPackageType>
 
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">21.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">15.0</SupportedOSPlatformVersion>
-    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">21.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
     <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' AND '$(TargetFramework)' == 'net9.0-android'">
+    <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <AndroidKeyStore>True</AndroidKeyStore>
+    <AndroidSigningKeyStore>../mojekljuc.keystore</AndroidSigningKeyStore>
+    <AndroidSigningKeyAlias>moj_alias</AndroidSigningKeyAlias>
+    <PublishTrimmed>true</PublishTrimmed>
+    <RunAOTCompilation>false</RunAOTCompilation> 
+    <AndroidLinkMode>SdkOnly</AndroidLinkMode>
+    <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
+  </PropertyGroup>
+
   <ItemGroup>
-    <!-- App Icon -->
-    <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
+    <MauiIcon Include="Resources\AppIcon\logo.png" ForegroundFile="Resources\AppIcon\logo.png" Color="#12122A" Link="appicon" />
 
-    <!-- Splash Screen -->
-    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
+    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#12122A" BaseSize="128,128" />
 
-    <!-- Images -->
     <MauiImage Include="Resources\Images\*" />
     <MauiImage Update="Resources\Images\dotnet_bot.png" Resize="True" BaseSize="300,185" />
 
-    <!-- Custom Fonts -->
     <MauiFont Include="Resources\Fonts\*" />
 
-    <!-- Raw Assets -->
     <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
@@ -51,8 +57,8 @@
   </ItemGroup>
 
   <ItemGroup>
-   
-    <!-- Ostali paketi -->
+    <PackageReference Include="Microsoft.Maui.Controls" Version="9.0.21" />
+    <PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="9.0.21" />
     <PackageReference Include="HtmlAgilityPack" Version="1.11.71" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
     <PackageReference Include="Plugin.Maui.Audio" Version="4.0.0" />
@@ -74,7 +80,5 @@
     <Folder Include="Pages\" />
     <Folder Include="Platforms\Android\Assets\" />
   </ItemGroup>
-
- 
 
 </Project>

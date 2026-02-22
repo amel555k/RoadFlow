@@ -1,44 +1,352 @@
-﻿using RadarApp.Services;
+﻿using RadarApp.Models;
+using RadarApp.Services;
 using System.Collections.Generic;
-using System.Text;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Globalization;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using Microsoft.Maui.Devices.Sensors;
 
 namespace RadarApp
 {
+    public class RadarFlatItemTemplateSelector : DataTemplateSelector
+    {
+        public DataTemplate HeaderTemplate { get; set; }
+        public DataTemplate ItemTemplate { get; set; }
+
+        protected override DataTemplate OnSelectTemplate(object item, BindableObject container)
+        {
+            return item is RadarFlatItem flatItem && flatItem.IsHeader
+                ? HeaderTemplate
+                : ItemTemplate;
+        }
+    }
+
     public partial class MainPage : ContentPage
     {
+        public static readonly DataTemplateSelector RadarFlatItemTemplate = new RadarFlatItemTemplateSelector
+        {
+            HeaderTemplate = new DataTemplate(() =>
+            {
+                var frame = new Frame
+                {
+                    BackgroundColor = Color.FromArgb("#212143"),
+                    Padding = new Thickness(10),
+                    Margin = new Thickness(0, 5, 0, 0),
+                    CornerRadius = 10,
+                    WidthRequest = 150,
+                    HorizontalOptions = LayoutOptions.Start
+                };
+                var label = new Label
+                {
+                    FontSize = 18,
+                    FontAttributes = FontAttributes.Bold,
+                    HorizontalTextAlignment = TextAlignment.Center,
+                    TextColor = Colors.White
+                };
+                label.SetBinding(Label.TextProperty, nameof(RadarFlatItem.CityName));
+                frame.Content = label;
+                return frame;
+            }),
+            ItemTemplate = new DataTemplate(() =>
+{
+    var outer = new Border
+    {
+        Stroke = Colors.Transparent,
+        StrokeThickness = 0,
+        BackgroundColor = Color.FromArgb("#D9D9D9"),
+        StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 8 },
+        Padding = new Thickness(8)
+    };
+    outer.SetBinding(Border.MarginProperty, nameof(RadarFlatItem.ItemMargin));
+
+    var inner = new Border
+    {
+        Stroke = Colors.Transparent,
+        StrokeThickness = 0,
+        BackgroundColor = Colors.White,
+        StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 10 },
+        Padding = new Thickness(10, 5)
+    };
+
+    var grid = new Grid { ColumnSpacing = 10 };
+    grid.ColumnDefinitions.Add(new ColumnDefinition { Width = 70 });
+    grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+
+    var timeLabel = new Label
+    {
+        FontSize = 14,
+        FontAttributes = FontAttributes.Bold,
+        TextColor = Colors.Black,
+        VerticalOptions = LayoutOptions.Center
+    };
+    timeLabel.SetBinding(Label.TextProperty, nameof(RadarFlatItem.Time));
+
+    var locationLabel = new Label
+    {
+        FontSize = 14,
+        TextColor = Colors.Black,
+        LineBreakMode = LineBreakMode.TailTruncation,
+        VerticalOptions = LayoutOptions.Center
+    };
+    locationLabel.SetBinding(Label.TextProperty, nameof(RadarFlatItem.Location));
+
+    Grid.SetColumn(timeLabel, 0);
+    Grid.SetColumn(locationLabel, 1);
+    grid.Children.Add(timeLabel);
+    grid.Children.Add(locationLabel);
+
+    inner.Content = grid;
+    outer.Content = inner;
+    return outer;
+})
+        };
+
         private readonly RadarParser _parser;
         private List<RadarData> _currentRadars;
+        private Canton? _selectedCanton = Canton.Srednjobosanski;
+        private readonly LocationTrackingService _locationService;
+        private readonly RadarAlertService _alertService;
+        private readonly MapDataService _mapDataService;
+        private readonly RadarHistoryService _historyService;
+        private bool _isMapLoaded = false;
+        private bool _isMapJsReady = false;
+        private bool _isTrackingActive = false;
         private bool _isMenuOpen = false;
+        private bool _isFirstMapLoad = true;
+        private bool _isListViewActive = true;
+        private bool _isFirstListLoad = true;
+        private bool _isDropdownOpen = false;
+        private bool _initialCameraPositioned = false;
 
-        // Konstruktor - inicijalizuje komponentu, parser, postavlja datum i učitava podatke
+        private List<CantonPickerItem> _cantonList;
+        private CantonPickerItem _currentSelectedItem;
+
         public MainPage()
         {
             InitializeComponent();
             _parser = new RadarParser();
-            LblDate.Text = DateTime.Now.ToString("dd.MM.yyyy");
+            _locationService = new LocationTrackingService();
+            _alertService = new RadarAlertService();
+            _mapDataService = new MapDataService();
+            _historyService = new RadarHistoryService();
+
+            MapView.Navigated += OnMapNavigated;
+            MapView.Navigating += OnWebViewNavigating;
+
+            SetupServiceEvents();
             _ = LoadRadarDataAsync();
+            InitializeCantonPicker();
         }
 
-        // Toggle funkcija za burger meni - otvara ili zatvara meni
+        private void InitializeCantonPicker()
+        {
+            _cantonList = new List<CantonPickerItem>
+            {
+                new CantonPickerItem { Label = "Unsko-sanski kanton",                Value = Canton.UnskoSanski },
+                new CantonPickerItem { Label = "Posavski kanton",                    Value = Canton.Posavski },
+                new CantonPickerItem { Label = "Tuzlanski kanton",                   Value = Canton.Tuzlanski },
+                new CantonPickerItem { Label = "Zeničko-dobojski kanton",            Value = Canton.ZenickoDobojski },
+                new CantonPickerItem { Label = "Bosansko-podrinjski kanton", Value = Canton.BosanskoPodrinjski },
+                new CantonPickerItem { Label = "Srednjobosanski kanton",             Value = Canton.Srednjobosanski },
+                new CantonPickerItem { Label = "Hercegovačko-neretvanski kanton",    Value = Canton.HercegovackoNeretvanski },
+                new CantonPickerItem { Label = "Zapadnohercegovački kanton",         Value = Canton.Zapadnohercegovacki },
+                new CantonPickerItem { Label = "Kanton Sarajevo",                    Value = Canton.Sarajevo },
+                new CantonPickerItem { Label = "Kanton 10",                          Value = Canton.Kanton10 },
+            };
+
+            _currentSelectedItem = _cantonList.FirstOrDefault(c => c.Value == _selectedCanton);
+            if (_currentSelectedItem != null)
+            {
+                _currentSelectedItem.IsSelected = true;
+                LblSelectedCanton.Text = _currentSelectedItem.Label;
+            }
+
+            CantonCollectionView.ItemsSource = _cantonList;
+        }
+
+        private void OnOpenPickerClicked(object sender, EventArgs e)
+        {
+            if (_isDropdownOpen) CloseDropdown();
+            else OpenDropdown();
+        }
+        private void OpenDropdown()
+{
+    _isDropdownOpen = true;
+    DropdownDismissOverlay.IsVisible = true;
+    LblPickerArrow.Text = "▲";
+
+    double screenWidth = DeviceDisplay.MainDisplayInfo.Width / DeviceDisplay.MainDisplayInfo.Density;
+    double rightPadding = 25;
+    double dropdownWidth = 220;
+    double xPos = screenWidth - dropdownWidth - rightPadding;
+    AbsoluteLayout.SetLayoutBounds(PickerDropdown, new Rect(xPos, 58, dropdownWidth, 420));
+
+    PickerDropdown.IsVisible = true;
+}
+
+private void CloseDropdown()
+{
+    _isDropdownOpen = false;
+    PickerDropdown.IsVisible = false;
+    DropdownDismissOverlay.IsVisible = false;
+    LblPickerArrow.Text = "▼";
+}
+        private void OnDropdownDismissOverlayTapped(object sender, EventArgs e)
+        {
+            CloseDropdown();
+        }
+
+        private async void OnCantonSelected(object sender, SelectionChangedEventArgs e)
+        {
+            var newItem = e.CurrentSelection.FirstOrDefault() as CantonPickerItem;
+
+            if (sender is CollectionView cv) cv.SelectedItem = null;
+
+            if (newItem == null || newItem == _currentSelectedItem) return;
+
+            if (_currentSelectedItem != null)
+            {
+                var oldItem = _currentSelectedItem;
+                var oldCell = FindCellForItem(CantonCollectionView, oldItem);
+                if (oldCell != null)
+                {
+                    _ = oldCell.FadeTo(0.4, 100).ContinueWith(_ =>
+                    {
+                        oldItem.IsSelected = false;
+                        MainThread.BeginInvokeOnMainThread(async () =>
+                            await oldCell.FadeTo(1.0, 150));
+                    });
+                }
+                else
+                {
+                    oldItem.IsSelected = false;
+                }
+            }
+
+            var newCell = FindCellForItem(CantonCollectionView, newItem);
+            newItem.IsSelected = true;
+
+            if (newCell != null)
+            {
+                await newCell.ScaleTo(0.93, 80, Easing.CubicIn);
+                await newCell.ScaleTo(1.0, 130, Easing.CubicOut);
+            }
+
+            _currentSelectedItem = newItem;
+            _selectedCanton = newItem.Value;
+            LblSelectedCanton.Text = newItem.Label;
+
+            CloseDropdown();
+            DisplayRadarData(_currentRadars);
+        }
+        private VisualElement FindCellForItem(IVisualTreeElement parent, object item)
+        {
+            foreach (var child in parent.GetVisualChildren())
+            {
+                if (child is VisualElement ve && ve.BindingContext == item)
+                    return ve;
+
+                var found = FindCellForItem(child, item);
+                if (found != null) return found;
+            }
+            return null;
+        }
+
+        private async Task ShowCustomAlert(string title, string message, string buttonText = "U REDU")
+        {
+            CustomAlertTitle.Text = title;
+            CustomAlertMessage.Text = message;
+            CustomAlertButton.Text = buttonText;
+            CustomAlertOverlay.IsVisible = true;
+
+            CustomAlertFrame.Scale = 0.8;
+            CustomAlertFrame.Opacity = 0;
+
+            await Task.WhenAll(
+                CustomAlertFrame.ScaleTo(1, 250, Easing.CubicOut),
+                CustomAlertFrame.FadeTo(1, 250)
+            );
+        }
+
+        private async void OnCustomAlertButtonClicked(object sender, EventArgs e)
+        {
+            await Task.WhenAll(
+                CustomAlertFrame.ScaleTo(0.8, 200, Easing.CubicIn),
+                CustomAlertFrame.FadeTo(0, 200)
+            );
+            CustomAlertOverlay.IsVisible = false;
+        }
+
+        private void SetupServiceEvents()
+        {
+            _locationService.LocationChanged += async (sender, location) =>
+            {
+                await OnLocationUpdated(location);
+            };
+
+            _locationService.CompassChanged += async     (sender, heading) =>
+            {
+                if (_locationService.CurrentLocation != null && _isTrackingActive)
+                {
+                    await UpdateUserLocationOnMap(_locationService.CurrentLocation, heading);
+                }
+            };
+
+            _alertService.InsideZoneChanged += (sender, isInside) =>
+            {
+                System.Diagnostics.Debug.WriteLine(isInside ? "Ušli ste u radar zonu!" : "Izašli ste iz radar zone.");
+            };
+        }
+
+        protected override async void OnAppearing()
+        {
+            base.OnAppearing();
+            if (!await CheckInternetConnectionAsync())
+                return;
+
+            if (!_isListViewActive)
+            {
+                if (_isTrackingActive)
+                {
+                    await _locationService.StartContinuousTrackingAsync();
+                    _locationService.StartCompass();
+                }
+                else
+                {
+                    _locationService.StartPeriodicLocationUpdates();
+                }
+
+                if (_locationService.CurrentLocation != null && _isMapLoaded)
+                {
+                    await UpdateUserLocationOnMap(
+                        _locationService.CurrentLocation,
+                        _isTrackingActive ? _locationService.CurrentHeading : 0);
+                }
+            }
+        }
+
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+            _locationService.StopPeriodicLocationUpdates();
+            _locationService.StopContinuousTracking();
+            _locationService.StopCompass();
+            _alertService.StopAlerts();
+        }
         private async void OnBurgerMenuClicked(object sender, EventArgs e)
         {
-            if (_isMenuOpen)
-            {
-                await CloseMenu();
-            }
-            else
-            {
-                await OpenMenu();
-            }
+            if (_isDropdownOpen) CloseDropdown();
+            if (_isMenuOpen) await CloseMenu();
+            else await OpenMenu();
         }
 
-        // Handler za X dugme - zatvara meni
         private async void OnCloseMenuClicked(object sender, EventArgs e)
         {
             await CloseMenu();
         }
 
-        // Animirano otvaranje menija sa overlay efektom
         private async Task OpenMenu()
         {
             _isMenuOpen = true;
@@ -51,14 +359,12 @@ namespace RadarApp
 
             Overlay.InputTransparent = false;
 
-            // Dodaje tap gesture na overlay da zatvori meni kad se klikne van njega
             var tapGesture = new TapGestureRecognizer();
             tapGesture.Tapped += async (s, e) => await CloseMenu();
             Overlay.GestureRecognizers.Clear();
             Overlay.GestureRecognizers.Add(tapGesture);
         }
 
-        // Animirano zatvaranje menija
         private async Task CloseMenu()
         {
             _isMenuOpen = false;
@@ -73,60 +379,69 @@ namespace RadarApp
             Overlay.GestureRecognizers.Clear();
         }
 
-        // Prebacuje na Lista view i učitava podatke
         private async void OnListaClicked(object sender, EventArgs e)
         {
+            if (!await CheckInternetConnectionAsync()) return;
             await CloseMenu();
-            ContentFrame.IsVisible = true;
+            BtnLista.BackgroundColor=Colors.White;
+            BtnLista.TextColor = Color.FromArgb("#212143");
+            BtnMapa.BackgroundColor = Color.FromArgb("#212143");
+            BtnMapa.TextColor=Colors.White;
+            BtnHistorija.BackgroundColor = Color.FromArgb("#212143");
+            BtnHistorija.TextColor=Colors.White;
 
-            // Mijenja boje dugmadi da prikaže aktivnu opciju
-            BtnLista.BackgroundColor = Color.FromArgb("#3498DB");
-            BtnMapa.BackgroundColor = Color.FromArgb("#95A5A6");
+            ResetHistoryView();
+            HistoryViewContainer.IsVisible = false;
+            ListViewContainer.IsVisible = true;
+            MapViewContainer.IsVisible = false;
+            _isListViewActive = true;
 
-            await LoadRadarDataAsync();
+            _locationService.StopPeriodicLocationUpdates();
+            _locationService.StopContinuousTracking();
+            _locationService.StopCompass();
+            _alertService.StopAlerts();
         }
 
-        // Prebacuje na Mapa view
         private async void OnMapaClicked(object sender, EventArgs e)
         {
+            if (!await CheckInternetConnectionAsync()) return;
             await CloseMenu();
 
-            // Mijenja boje dugmadi da prikaže aktivnu opciju
-            BtnMapa.BackgroundColor = Color.FromArgb("#3498DB");
-            BtnLista.BackgroundColor = Color.FromArgb("#95A5A6");
+            BtnMapa.BackgroundColor = Colors.White;
+            BtnMapa.TextColor=Color.FromArgb("#212143");
+            BtnLista.BackgroundColor = Color.FromArgb("#212143");
+            BtnLista.TextColor=Colors.White;
+            BtnHistorija.BackgroundColor = Color.FromArgb("#212143");
+            BtnHistorija.TextColor=Colors.White;
+            ResetHistoryView();
+            HistoryViewContainer.IsVisible = false;
+            ListViewContainer.IsVisible = false;
+            MapViewContainer.IsVisible = true;
+            _isListViewActive = false;
 
-            await Shell.Current.GoToAsync("///map");
+            if (_isFirstMapLoad)
+            {
+                await InitializeMapAsync();
+                _isFirstMapLoad = false;
+            }
+            else
+            {
+                if (_isTrackingActive)
+                {
+                    await _locationService.StartContinuousTrackingAsync();
+                    _locationService.StartCompass();
+                }
+                else
+                {
+                    _locationService.StartPeriodicLocationUpdates();
+                }
+            }
         }
-
-        // Handler za refresh dugme - ponovo učitava podatke
         private async void OnRefreshClicked(object sender, EventArgs e)
         {
             await LoadRadarDataAsync();
         }
 
-        // Prikazuje putanju do lista.txt fajla sa dodatnim informacijama
-        private async void OnShowPathClicked(object sender, EventArgs e)
-        {
-            var filePath = Path.Combine(FileSystem.AppDataDirectory, "lista.txt");
-
-            if (File.Exists(filePath))
-            {
-                var fileInfo = new FileInfo(filePath);
-                var fileSize = fileInfo.Length;
-                var lastModified = fileInfo.LastWriteTime;
-
-                await DisplayAlert("Lokacija fajla",
-                    $"Putanja:\n{filePath}\n\nVeličina: {fileSize} bytes\nZadnja izmjena: {lastModified:dd.MM.yyyy HH:mm:ss}",
-                    "OK");
-            }
-            else
-            {
-                await DisplayAlert("Lokacija fajla",
-                    $"Fajl još ne postoji.\nBit će kreiran na:\n{filePath}", "OK");
-            }
-        }
-
-        // Asinhrono učitava radar podatke sa loading indikatorom
         private async Task LoadRadarDataAsync()
         {
             try
@@ -137,6 +452,8 @@ namespace RadarApp
 
                 _currentRadars = await _parser.ParseAllLocationsAsync();
                 DisplayRadarData(_currentRadars);
+                await _historyService.SaveRadarsForDateAsync(DateTime.Now, _currentRadars);
+                _isFirstListLoad = false;
             }
             catch (Exception ex)
             {
@@ -150,91 +467,92 @@ namespace RadarApp
             }
         }
 
-        // Prikazuje radar podatke grupisane po gradovima
         private void DisplayRadarData(List<RadarData> radars)
         {
-            RadarListContainer.Children.Clear();
-
             if (radars == null || radars.Count == 0)
             {
-                RadarListContainer.Children.Add(new Label
-                {
-                    Text = "Nema dostupnih podataka",
-                    FontSize = 16,
-                    TextColor = Colors.Gray,
-                    HorizontalOptions = LayoutOptions.Center,
-                    Margin = new Thickness(0, 20, 0, 0)
-                });
+                LblNemaData.IsVisible = true;
+                RadarListContainer.ItemsSource = null;
                 return;
             }
 
-            // Grupira radare po gradovima
-            var groupedRadars = radars.GroupBy(r => r.City);
+            LblNemaData.IsVisible = false;
 
-            foreach (var group in groupedRadars)
+            var filteredRadars = radars.AsEnumerable();
+            if (_selectedCanton.HasValue)
             {
-                // Header frame sa nazivom grada
-                var cityFrame = new Frame
+                var citiesInCanton = RadarConfig.Locations
+                    .Where(l => l.Canton == _selectedCanton.Value)
+                    .Select(l => l.Name)
+                    .ToHashSet();
+
+                filteredRadars = filteredRadars.Where(r => citiesInCanton.Contains(r.City));
+            }
+
+            var flatList = new List<RadarFlatItem>();
+
+            var cityGroups = filteredRadars
+                .GroupBy(r => r.City)
+                .Select(g => new { CityName = g.Key, Radars = g.ToList() })
+                .ToList();
+
+            foreach (var group in cityGroups)
+            {
+                flatList.Add(new RadarFlatItem
                 {
-                    BackgroundColor = Color.FromArgb("#3498DB"),
-                    Padding = new Thickness(10, 5),
-                    Margin = new Thickness(0, 5, 0, 5),
-                    CornerRadius = 3
-                };
+                    Position = RadarGroupPosition.Header,
+                    CityName = group.CityName
+                });
 
-                var cityLabel = new Label
+                var radarList = group.Radars;
+                for (int i = 0; i < radarList.Count; i++)
                 {
-                    Text = group.Key,
-                    FontSize = 18,
-                    FontAttributes = FontAttributes.Bold,
-                    TextColor = Colors.White
-                };
+                    var r = radarList[i];
+                    bool isFirst = i == 0;
+                    bool isLast = i == radarList.Count - 1;
 
-                cityFrame.Content = cityLabel;
-                RadarListContainer.Children.Add(cityFrame);
+                    RadarGroupPosition pos;
+                    if (radarList.Count == 1) pos = RadarGroupPosition.Only;
+                    else if (isFirst) pos = RadarGroupPosition.First;
+                    else if (isLast) pos = RadarGroupPosition.Last;
+                    else pos = RadarGroupPosition.Middle;
 
-                // Dodaje svaki radar u grupi
-                foreach (var radar in group)
-                {
-                    var radarFrame = new Frame
+                    flatList.Add(new RadarFlatItem
                     {
-                        BackgroundColor = Color.FromArgb("#ECF0F1"),
-                        Padding = new Thickness(10),
-                        Margin = new Thickness(5, 2, 5, 2),
-                        CornerRadius = 5,
-                        HasShadow = false
-                    };
-
-                    var radarStack = new HorizontalStackLayout { Spacing = 10 };
-
-                    // Label za vrijeme
-                    var timeLabel = new Label
-                    {
-                        Text = radar.Time,
-                        FontSize = 14,
-                        FontAttributes = FontAttributes.Bold,
-                        TextColor = Color.FromArgb("#2C3E50"),
-                        VerticalOptions = LayoutOptions.Center,
-                        WidthRequest = 80
-                    };
-
-                    // Label za lokaciju
-                    var locationLabel = new Label
-                    {
-                        Text = radar.Location,
-                        FontSize = 14,
-                        TextColor = Color.FromArgb("#34495E"),
-                        VerticalOptions = LayoutOptions.Center,
-                        LineBreakMode = LineBreakMode.WordWrap
-                    };
-
-                    radarStack.Children.Add(timeLabel);
-                    radarStack.Children.Add(locationLabel);
-
-                    radarFrame.Content = radarStack;
-                    RadarListContainer.Children.Add(radarFrame);
+                        Position = pos,
+                        CityName = group.CityName,
+                        Time = r.Time,
+                        Location = r.Location
+                    });
                 }
             }
+
+            RadarListContainer.ItemsSource = flatList;
         }
+
+        private async Task<bool> CheckInternetConnectionAsync()
+        {
+            var current = Connectivity.NetworkAccess;
+            if (current != NetworkAccess.Internet)
+            {
+                await ShowCustomAlert("Nema internet konekcije", "Molimo provjerite da li su uključeni WiFi ili mobilni podaci.", "U REDU");
+                return false;
+            }
+            return true;
+        }
+    }
+
+
+    public class RadarListBindingContext
+    {
+        public List<CityGroupViewModel> CityGroups { get; set; }
+    }
+    public class BoolToFontAttributesConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+            => value is bool b && b ? FontAttributes.Bold : FontAttributes.None;
+
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+            => throw new NotImplementedException();
     }
 }

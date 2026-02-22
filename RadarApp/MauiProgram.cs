@@ -16,6 +16,7 @@ namespace RadarApp
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 })
                 .AddAudio();
+                builder.Services.AddSingleton<MainPage>();
 
 #if DEBUG
             builder.Logging.AddDebug();

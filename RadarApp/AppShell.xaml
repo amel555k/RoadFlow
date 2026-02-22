@@ -11,8 +11,5 @@
         ContentTemplate="{DataTemplate local:MainPage}"
         Route="MainPage" />
 
-    <ShellContent
-        Route="map"
-        ContentTemplate="{DataTemplate local:MapPage}" />
 
 </Shell>

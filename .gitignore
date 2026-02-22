@@ -10,7 +10,7 @@
 *.userosscache
 *.sln.docstates
 *.env
-
+mojekljuc.keystore
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 

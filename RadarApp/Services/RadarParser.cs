@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using HtmlAgilityPack;
 using Microsoft.Maui.Storage;
+using RadarApp.Models;
 
 namespace RadarApp.Services
 {
@@ -18,55 +19,73 @@ namespace RadarApp.Services
         private readonly string _filePath;
         private const string BaseUrl = "***REMOVED***";
 
+        private readonly Dictionary<int, Task<string>> _htmlCache = new Dictionary<int, Task<string>>();
+
         public RadarParser()
         {
             _httpClient = new HttpClient();
-            _httpClient.Timeout = TimeSpan.FromSeconds(5);
             _filePath = Path.Combine(FileSystem.AppDataDirectory, "lista.txt");
         }
 
-        // Glavna metoda - paralelno skida podatke sa svih linkova i vraća samo današnje radare
         public async Task<List<RadarData>> ParseAllLocationsAsync()
         {
             var rawRadars = new List<RadarData>();
             var todayDate = DateTime.Today;
 
-            // Paralelno skidanje podataka sa svih ID-jeva
-            var tasks = new List<Task<List<RadarData>>>();
+            lock (_htmlCache) { _htmlCache.Clear(); }
+
+            if (Microsoft.Maui.Networking.Connectivity.NetworkAccess != Microsoft.Maui.Networking.NetworkAccess.Internet)
+            {
+                var noConnectionResult = new List<RadarData>
+                {
+                    new RadarData
+                    {
+                        City = "STATUS SISTEMA",
+                        Time = "INFO",
+                        Location = "Molimo provjerite internet konekciju.",
+                        PageDate = DateTime.Now
+                    }
+                };
+                return noConnectionResult;
+            }
+
+            var taskTuples = new List<(string CityName, int Id, Task<List<RadarData>> Task)>();
 
             foreach (var location in RadarConfig.Locations)
             {
                 foreach (var id in location.PossibleIds)
                 {
-                    tasks.Add(ParseSingleIdWithErrorHandlingAsync(location.Name, id));
+                    taskTuples.Add((location.Name, id, ParseSingleIdWithErrorHandlingAsync(location.Name, id, location.MapEnabled)));
                 }
             }
 
-            // Čeka da se svi taskovi završe odjednom
-            var allResults = await Task.WhenAll(tasks);
+            await Task.WhenAll(taskTuples.Select(t => t.Task));
 
-            // Spaja rezultate i filtrira po današnjem datumu
-            foreach (var radarsFromLink in allResults)
+            foreach (var (cityName, id, task) in taskTuples)
             {
+                var radarsFromLink = task.Result;
+
                 foreach (var radar in radarsFromLink)
                 {
-                    // Dodaje samo današnje radare ili info/error poruke
                     if ((radar.PageDate.HasValue && radar.PageDate.Value.Date == todayDate) ||
-                        radar.Time == "INFO" || radar.Time == "GREŠKA")
+                        radar.Time == "INFO")
                     {
                         rawRadars.Add(radar);
                     }
                 }
             }
 
-            // Sortira po datumu (najnoviji prvo)
             var finalRadars = rawRadars
-                .OrderByDescending(r => r.PageDate ?? DateTime.MinValue)
-                .ToList();
+            .Where(r => r.Time != "INFO")
+            .GroupBy(r => new { r.City, r.Time, r.Location })
+            .Select(g => g.First())
+            .OrderByDescending(r => r.PageDate ?? DateTime.MinValue)
+            .ToList();
 
-            // Ako ništa nije pronađeno, dodaje informativnu poruku
-            if (!finalRadars.Any())
+            if (!finalRadars.Any(r => r.Time != "INFO"))
             {
+                finalRadars.Clear(); 
+                
                 finalRadars.Add(new RadarData
                 {
                     City = "STATUS SISTEMA",
@@ -75,8 +94,6 @@ namespace RadarApp.Services
                     PageDate = DateTime.Now
                 });
             }
-
-            // Snima rezultate u fajl
             var sb = new StringBuilder();
             var grouped = finalRadars.GroupBy(r => r.City);
 
@@ -95,49 +112,54 @@ namespace RadarApp.Services
             return finalRadars;
         }
 
-        // Wrapper metoda sa error handlingom za pojedinačni ID
-        private async Task<List<RadarData>> ParseSingleIdWithErrorHandlingAsync(string baseCityName, int id)
-        {
-            try
-            {
-                return await ParseSingleIdAsync(baseCityName, id);
-            }
-            catch (Exception ex)
-            {
-                // Vraća error poruku ako pukne (npr. nema interneta)
-                return new List<RadarData>
-                {
-                    new RadarData
-                    {
-                        City = $"{baseCityName} - GREŠKA",
-                        Time = "INFO",
-                        Location = $"Greška: {ex.Message}",
-                        PageDate = DateTime.Now
-                    }
-                };
-            }
-        }
 
-        // Parsira jedan link i izvlači radare sa njega
-        private async Task<List<RadarData>> ParseSingleIdAsync(string baseCityName, int id)
+            private async Task<List<RadarData>> ParseSingleIdWithErrorHandlingAsync(string baseCityName, int id, bool mapEnabled)
+            {
+                try
+                {
+                    return await ParseSingleIdAsync(baseCityName, id, mapEnabled);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Greška pri parsiranju ID-a {id}: {ex.Message}");
+                    return new List<RadarData>(); 
+                }
+            }
+        
+        private async Task<List<RadarData>> ParseSingleIdAsync(string baseCityName, int id, bool mapEnabled)
         {
             var radars = new List<RadarData>();
             string url = $"{BaseUrl}{id}";
-
-            var html = await _httpClient.GetStringAsync(url);
+            Task<string> htmlTask;
+            lock (_htmlCache)
+            {
+                if (!_htmlCache.TryGetValue(id, out htmlTask))
+                {
+                    htmlTask = _httpClient.GetStringAsync(url);
+                    _htmlCache[id] = htmlTask;
+                    System.Diagnostics.Debug.WriteLine($"[Cache MISS] Fetching ID={id}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Cache HIT]  Reusing ID={id} za grad '{baseCityName}'");
+                }
+            }
+            var html = await htmlTask;
             var doc = new HtmlDocument();
             doc.LoadHtml(html);
 
             var fullText = System.Net.WebUtility.HtmlDecode(doc.DocumentNode.InnerText);
-            
-            // Čisti tekst od čudnih razmaka i karaktera
             fullText = fullText.Replace("\u00A0", " ");
             fullText = Regex.Replace(fullText, @"\s+", " ");
+            if (id != 323 && id!=393 && !CityNameExistsInHtml(fullText, baseCityName))
+            {
+                System.Diagnostics.Debug.WriteLine($"Grad '{baseCityName}' se ne pojavljuje na stranici ID={id}. Preskačem.");
+                return new List<RadarData>();
+            }
 
             DateTime? foundDate = ExtractDateFromHtml(doc, fullText);
             string cityName = baseCityName;
 
-            // Regex za vrijeme: hvata "HH:mm do HH:mm" (sa ili bez "sati")
             var timePattern = @"\d{1,2}:\d{2}(?:\s*sati)?\s*[–\-do]+\s*\d{1,2}:\d{2}(?:\s*sati)?";
             var timeMatches = Regex.Matches(fullText, timePattern);
 
@@ -148,18 +170,17 @@ namespace RadarApp.Services
                     var timeMatch = timeMatches[i];
                     var rawTime = timeMatch.Value.Trim();
 
-                    // Čisti vrijeme za prikaz (uklanja "sati")
                     var cleanTime = Regex.Replace(rawTime, @"\s*sati", "", RegexOptions.IgnoreCase);
                     cleanTime = cleanTime.Replace("–", " do ").Replace("-", " do ");
                     cleanTime = Regex.Replace(cleanTime, @"\s+", " ");
 
-                    // Izvlači tekst između dva vremena (lokacija radara)
                     int startPos = timeMatch.Index + timeMatch.Length;
                     int endPos = (i < timeMatches.Count - 1) ? timeMatches[i + 1].Index : fullText.Length;
 
                     var locationPart = fullText.Substring(startPos, endPos - startPos).Trim();
+                    char[] separators = { '-', ':', ' ', ',', '.', '–', '—' }; 
+                    locationPart = locationPart.TrimStart(separators).Trim();
 
-                    // Dodatno čišćenje lokacije od neželjenog teksta
                     var googleIndex = locationPart.IndexOf("PRIKAŽI NA GOOGLE MAPI", StringComparison.OrdinalIgnoreCase);
                     if (googleIndex >= 0) locationPart = locationPart.Substring(0, googleIndex);
 
@@ -168,21 +189,59 @@ namespace RadarApp.Services
 
                     locationPart = locationPart.Trim();
 
+                   
                     if (!string.IsNullOrWhiteSpace(locationPart))
                     {
-                        radars.Add(new RadarData
+                        locationPart = PreprocessBihamkLocation(locationPart);
+
+                        if (mapEnabled)
                         {
-                            City = cityName,
-                            Time = cleanTime,
-                            Location = locationPart,
-                            PageDate = foundDate ?? DateTime.MinValue
-                        });
+                            var coords = RadarConfig.FindCoordinatesByName(locationPart);
+                            if (coords.Any())
+                            {
+                                foreach (var coordinate in coords)
+                                {
+                                    radars.Add(new RadarData
+                                    {
+                                        City = cityName,
+                                        Time = cleanTime,
+                                        Location = locationPart,
+                                        PageDate = foundDate,
+                                        Coordinate = coordinate,
+                                        Latitude = coordinate.Latitude,
+                                        Longitude = coordinate.Longitude,
+                                        SpeedLimit = coordinate.SpeedLimit
+                                    });
+                                }
+                            }
+                            else
+                            {
+                               
+                                radars.Add(new RadarData
+                                {
+                                    City = cityName,
+                                    Time = cleanTime,
+                                    Location = locationPart,
+                                    PageDate = foundDate
+                                });
+                            }
+                        }
+                        else
+                        {
+                            radars.Add(new RadarData
+                            {
+                                City = cityName,
+                                Time = cleanTime,
+                                Location = locationPart,
+                                PageDate = foundDate
+                            });
+                        }
                     }
+
                 }
             }
             else
             {
-                // Ako nema vremena, znači nema radara za ovaj ID
                 radars.Add(new RadarData
                 {
                     City = cityName,
@@ -195,10 +254,21 @@ namespace RadarApp.Services
             return radars;
         }
 
-        // Izvlači datum iz HTML-a (prvo traži u naslovu, zatim u tekstu)
+            private string PreprocessBihamkLocation(string location)
+            {
+                if (string.IsNullOrWhiteSpace(location))
+                    return location;
+
+                location = Regex.Replace(location, @"\s*sati\s*", " ", RegexOptions.IgnoreCase);
+                
+                location = Regex.Replace(location, @"\s+", " ");
+                
+                return location.Trim();
+            }
+
         private DateTime? ExtractDateFromHtml(HtmlDocument doc, string fullText)
         {
-            // Pokušava naći datum u naslovu
+           
             var titleNode = doc.DocumentNode.SelectSingleNode("//h1")
                             ?? doc.DocumentNode.SelectSingleNode("//h2")
                             ?? doc.DocumentNode.SelectSingleNode("//title");
@@ -213,7 +283,6 @@ namespace RadarApp.Services
                 }
             }
 
-            // Ako nije našao u naslovu, traži ZADNJI datum u tekstu (obično najrelevantiji)
             var regex = new Regex(@"([0-9]{1,2})\.\s*([0-9]{1,2})\.\s*([0-9]{4})\.?");
             var matches = regex.Matches(fullText);
 
@@ -237,7 +306,6 @@ namespace RadarApp.Services
             return null;
         }
 
-        // Izvlači datum iz teksta pomoću regex-a
         private DateTime? ExtractDateFromText(string text)
         {
             var regex = new Regex(@"([0-9]{1,2})\.\s*([0-9]{1,2})\.\s*([0-9]{4})\.?");
@@ -260,7 +328,6 @@ namespace RadarApp.Services
             return null;
         }
 
-        // Snima sadržaj u fajl
         private async Task SaveToFileAsync(string content)
         {
             try
@@ -270,7 +337,6 @@ namespace RadarApp.Services
             catch { }
         }
 
-        // Čita sadržaj iz fajla
         public async Task<string> ReadFromFileAsync()
         {
             try
@@ -281,8 +347,6 @@ namespace RadarApp.Services
             catch { }
             return string.Empty;
         }
-
-        // Vraća sve radare iz fajla (bez vremenskog filtriranja)
         public async Task<List<RadarData>> GetActiveRadarsAsync()
         {
             var fileContent = await ReadFromFileAsync();
@@ -294,7 +358,6 @@ namespace RadarApp.Services
             return allRadars;
         }
 
-        // Parsira sadržaj fajla i pretvara ga u listu RadarData objekata
         private List<RadarData> ParseFileContent(string content)
         {
             var radars = new List<RadarData>();
@@ -304,53 +367,79 @@ namespace RadarApp.Services
             foreach (var line in lines)
             {
                 var trimmed = line.Trim();
-                
-                // Ako je header sa imenom grada
+
                 if (trimmed.StartsWith("===") && trimmed.EndsWith("==="))
                 {
                     currentCity = trimmed.Replace("===", "").Trim();
                     continue;
                 }
 
-                // Parsira liniju formata "vrijeme - lokacija"
                 var parts = trimmed.Split(new[] { " - " }, 2, StringSplitOptions.None);
                 if (parts.Length == 2)
                 {
-                    radars.Add(new RadarData
+                    var locationName = parts[1].Trim();
+
+                    var coordinates = RadarConfig.FindCoordinatesByName(locationName);
+
+                    if (coordinates.Any())
                     {
-                        City = currentCity,
-                        Time = parts[0].Trim(),
-                        Location = parts[1].Trim(),
-                        PageDate = DateTime.Now
-                    });
+                        foreach (var coordinate in coordinates)
+                        {
+                            radars.Add(new RadarData
+                            {
+                                City = currentCity,
+                                Time = parts[0].Trim(),
+                                Location = locationName,
+                                PageDate = DateTime.Now,
+                                Coordinate = coordinate,
+                                Latitude = coordinate.Latitude,
+                                Longitude = coordinate.Longitude,
+                                SpeedLimit = coordinate.SpeedLimit
+                            });
+                        }
+                    }
+                    else
+                    {
+                        radars.Add(new RadarData
+                        {
+                            City = currentCity,
+                            Time = parts[0].Trim(),
+                            Location = locationName,
+                            PageDate = DateTime.Now
+                        });
+                    }
                 }
             }
             return radars;
         }
-    }
-
-    public class RadarData
-    {
-        public string City { get; set; }
-        public string Time { get; set; }
-        public string Location { get; set; }
-        public DateTime? PageDate { get; set; }
-
-        // Provjerava da li je radar aktivan za dato vrijeme
-        public bool IsActiveAt(TimeSpan currentTime)
+        private bool CityNameExistsInHtml(string htmlText, string cityName)
         {
-            if (Time == "INFO" || Time == "GREŠKA") return true;
-            try
-            {
-                var parts = Time.Split(new[] { " do " }, StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length != 2) return false;
+            if (string.IsNullOrWhiteSpace(htmlText) || string.IsNullOrWhiteSpace(cityName))
+                return false;
 
-                if (!TimeSpan.TryParse(parts[0].Trim(), out TimeSpan startTime)) return false;
-                if (!TimeSpan.TryParse(parts[1].Trim(), out TimeSpan endTime)) return false;
+            var normalizedHtml = StripDiacriticsLocal(htmlText.ToLowerInvariant());
+            var normalizedCity = StripDiacriticsLocal(cityName.ToLowerInvariant());
 
-                return currentTime >= startTime && currentTime <= endTime;
-            }
-            catch { return false; }
+            if (normalizedHtml.Contains(normalizedCity))
+                return true;
+
+            var withDash = normalizedCity.Replace(" ", "-");
+            if (normalizedHtml.Contains(withDash))
+                return true;
+            var noSpace = normalizedCity.Replace(" ", "");
+            if (normalizedHtml.Contains(noSpace))
+                return true;
+
+            return false;
+        }
+
+        private static string StripDiacriticsLocal(string text)
+        {
+            return text
+                .Replace('č', 'c').Replace('ć', 'c')
+                .Replace('š', 's')
+                .Replace('ž', 'z')
+                .Replace('đ', 'd');
         }
     }
 }
