@@ -154,6 +154,7 @@ namespace RadarApp
                 new CantonPickerItem { Label = "Zapadnohercegovački kanton",         Value = Canton.Zapadnohercegovacki },
                 new CantonPickerItem { Label = "Kanton Sarajevo",                    Value = Canton.Sarajevo },
                 new CantonPickerItem { Label = "Kanton 10",                          Value = Canton.Kanton10 },
+                new CantonPickerItem { Label = "Brčko distrikt",                          Value = Canton.BrckoDistrikt },
             };
 
             _currentSelectedItem = _cantonList.FirstOrDefault(c => c.Value == _selectedCanton);

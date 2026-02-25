@@ -159,7 +159,6 @@ namespace RadarApp.Services
 
             DateTime? foundDate = ExtractDateFromHtml(doc, fullText);
             string cityName = baseCityName;
-
             var timePattern = @"\d{1,2}:\d{2}(?:\s*sati)?\s*[–\-do]+\s*\d{1,2}:\d{2}(?:\s*sati)?";
             var timeMatches = Regex.Matches(fullText, timePattern);
 
@@ -254,8 +253,8 @@ namespace RadarApp.Services
             return radars;
         }
 
-            private string PreprocessBihamkLocation(string location)
-            {
+        private string PreprocessBihamkLocation(string location)
+        {
                 if (string.IsNullOrWhiteSpace(location))
                     return location;
 
@@ -264,11 +263,10 @@ namespace RadarApp.Services
                 location = Regex.Replace(location, @"\s+", " ");
                 
                 return location.Trim();
-            }
+        } 
 
         private DateTime? ExtractDateFromHtml(HtmlDocument doc, string fullText)
         {
-           
             var titleNode = doc.DocumentNode.SelectSingleNode("//h1")
                             ?? doc.DocumentNode.SelectSingleNode("//h2")
                             ?? doc.DocumentNode.SelectSingleNode("//title");
@@ -282,25 +280,13 @@ namespace RadarApp.Services
                     return dateFromTitle;
                 }
             }
-
-            var regex = new Regex(@"([0-9]{1,2})\.\s*([0-9]{1,2})\.\s*([0-9]{4})\.?");
+            var regex = new Regex(@"([0-9]{1,2})[\.\s]+([0-9]{1,2})[\.\s]+([0-9]{4})");
             var matches = regex.Matches(fullText);
 
             if (matches.Count > 0)
             {
                 var match = matches[matches.Count - 1];
-
-                try
-                {
-                    int day = int.Parse(match.Groups[1].Value);
-                    int month = int.Parse(match.Groups[2].Value);
-                    int year = int.Parse(match.Groups[3].Value);
-                    return new DateTime(year, month, day);
-                }
-                catch
-                {
-                    return null;
-                }
+                return TryParseDateTime(match);
             }
 
             return null;
@@ -308,31 +294,38 @@ namespace RadarApp.Services
 
         private DateTime? ExtractDateFromText(string text)
         {
-            var regex = new Regex(@"([0-9]{1,2})\.\s*([0-9]{1,2})\.\s*([0-9]{4})\.?");
+            var regex = new Regex(@"([0-9]{1,2})[\.\s]+([0-9]{1,2})[\.\s]+([0-9]{4})");
             var match = regex.Match(text);
 
             if (match.Success)
             {
-                try
-                {
-                    int day = int.Parse(match.Groups[1].Value);
-                    int month = int.Parse(match.Groups[2].Value);
-                    int year = int.Parse(match.Groups[3].Value);
-                    return new DateTime(year, month, day);
-                }
-                catch
-                {
-                    return null;
-                }
+                return TryParseDateTime(match);
             }
             return null;
         }
-
+        private DateTime? TryParseDateTime(Match match)
+        {
+            try
+            {
+                int day = int.Parse(match.Groups[1].Value);
+                int month = int.Parse(match.Groups[2].Value);
+                int year = int.Parse(match.Groups[3].Value);
+                return new DateTime(year, month, day);
+            }
+            catch
+            {
+                return null;
+            }
+        }
         private async Task SaveToFileAsync(string content)
         {
             try
             {
                 await File.WriteAllTextAsync(_filePath, content, Encoding.UTF8);
+                var downloadsPath = Android.OS.Environment.GetExternalStoragePublicDirectory(
+                Android.OS.Environment.DirectoryDownloads).AbsolutePath;
+                var destPath = Path.Combine(downloadsPath, "lista.txt");
+                File.Copy(_filePath, destPath, overwrite: true);
             }
             catch { }
         }

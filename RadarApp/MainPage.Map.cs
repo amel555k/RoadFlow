@@ -46,8 +46,8 @@ namespace RadarApp
     {
         _locationService.StopPeriodicLocationUpdates();
 
-        _locationService.StartCompass();
-        await _locationService.StartContinuousTrackingAsync();
+    
+        _= _locationService.StartContinuousTrackingAsync();
 
         var location = _locationService.CurrentLocation;
 
@@ -71,13 +71,6 @@ namespace RadarApp
 
         if (location != null)
         {
-            int retries = 2;
-            while (_locationService.CurrentHeading == 0 && retries > 0)
-            {
-                await Task.Delay(100);
-                retries--;
-            }
-
             double initialHeading = _locationService.CurrentHeading;
             await UpdateUserLocationOnMap(location, initialHeading);
         }
@@ -86,7 +79,6 @@ namespace RadarApp
     {
         _locationService.StopContinuousTracking();
         _locationService.StartPeriodicLocationUpdates();
-        _locationService.StopCompass();
         _alertService.StopAlerts();
         await MainThread.InvokeOnMainThreadAsync(async () =>
         {
@@ -120,7 +112,7 @@ namespace RadarApp
                         "OK");
                     return;
                 }
-
+                _locationService.StartCompass();
                 var currentLocation = await _locationService
                     .GetCurrentLocationAsync(GeolocationAccuracy.Medium);
 

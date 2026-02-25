@@ -11,6 +11,7 @@ namespace RadarApp.Models
         HercegovackoNeretvanski = 7,
         Zapadnohercegovacki = 8,
         Sarajevo = 9,
-        Kanton10 = 10
+        Kanton10 = 10,
+        BrckoDistrikt=11
     }
 }

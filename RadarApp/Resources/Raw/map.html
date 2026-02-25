@@ -284,7 +284,7 @@
                         zoom: 16,
                         pitch: 45,
                         bearing: heading,
-                        speed: 1.2,
+                        speed: 3.5,
                         curve: 1,
                         essential: true
                     });
@@ -293,7 +293,7 @@
                         window._isMapAnimating = false;
                     });
 
-                    setTimeout(() => { window._isMapAnimating = false; }, 3000);
+                    setTimeout(() => { window._isMapAnimating = false; }, 700);
                 } 
                 else {
                     if (!window._isMapAnimating) {

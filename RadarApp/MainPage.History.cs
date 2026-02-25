@@ -32,6 +32,7 @@ public partial class MainPage
             new CantonPickerItem { Label = "Zapadnohercegovački kanton",         Value = Canton.Zapadnohercegovacki },
             new CantonPickerItem { Label = "Kanton Sarajevo",                    Value = Canton.Sarajevo },
             new CantonPickerItem { Label = "Kanton 10",                          Value = Canton.Kanton10 },
+            new CantonPickerItem { Label = "Brčko distrikt",                          Value = Canton.BrckoDistrikt },
         };
 
         _historyCurrentSelectedItem = _historyCantonList.FirstOrDefault(c => c.Value == _historySelectedCanton);
@@ -418,14 +419,33 @@ public partial class MainPage
     {
         if (_isHistoryDropdownOpen) CloseHistoryDropdown();
 
+        _historySelectedCanton = Canton.Srednjobosanski;
+
+        if (_historyCantonList != null)
+        {
+            foreach (var item in _historyCantonList)
+            {
+                item.IsSelected = (item.Value == Canton.Srednjobosanski);
+                if (item.IsSelected)
+                {
+                    _historyCurrentSelectedItem = item;
+                    LblHistorySelectedCanton.Text = item.Label;
+                }
+            }
+            
+            HistoryCantonCollectionView.ItemsSource = null;
+            HistoryCantonCollectionView.ItemsSource = _historyCantonList;
+        }
+
         CalendarFrame.IsVisible = true;
         HistoryDataContainer.IsVisible = false;
         BtnBackToCalendar.IsVisible = false;
         BtnBurgerMenuHistory.IsVisible = true;
         _isCalendarViewShowing = true;
         LblHistoryTitle.Text = "Historija Radara";
+        
+        _currentHistoryRadars = new List<RadarData>();
     }
-
     private void ResetHistoryView()
     {
         if (_isHistoryDropdownOpen) CloseHistoryDropdown();
@@ -442,8 +462,7 @@ public partial class MainPage
 
         LblHistoryTitle.Text = "Historija Radara";
         _currentCalendarMonth = DateTime.Today;
-
-        // Reset kanton picker na default
+        
         _historySelectedCanton = Canton.Srednjobosanski;
         _historyCantonList = null; 
     }

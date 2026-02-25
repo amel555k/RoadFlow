@@ -33,7 +33,7 @@ namespace RadarApp.Services
             new RadarLocation
             {
                 Name = "Donji Vakuf",
-                PossibleIds = new List<int> { 419, 415 },
+                PossibleIds = new List<int> { 419, 416 },
                 Canton=Canton.Srednjobosanski
             }, 
             new RadarLocation
@@ -113,19 +113,19 @@ namespace RadarApp.Services
             new RadarLocation
             {
                 Name = "Tuzla",
-                PossibleIds = new List<int> { 391 },
+                PossibleIds = new List<int> { 391,319 },
                 Canton=Canton.Tuzlanski,
             },
             new RadarLocation
             {
                 Name = "Gračanica",
-                PossibleIds = new List<int> { 471 },
+                PossibleIds = new List<int> { 471, 355 },
                 Canton=Canton.Tuzlanski,
             },
             new RadarLocation
             {
                 Name = "Kalesija",
-                PossibleIds = new List<int> { 2059 },
+                PossibleIds = new List<int> { 2059, 3987 },
                 Canton=Canton.Tuzlanski,
             },
             new RadarLocation
@@ -137,20 +137,44 @@ namespace RadarApp.Services
             new RadarLocation
             {
                 Name = "Čelić",
-                PossibleIds = new List<int> { 392 },
+                PossibleIds = new List<int> { 392, 320},
                 Canton=Canton.Tuzlanski,
             },
             new RadarLocation
             {
                 Name = "Srebrenik",
-                PossibleIds = new List<int> { 2971 },
+                PossibleIds = new List<int> { 2971, 2831 },
                 Canton=Canton.Tuzlanski,
             },
             new RadarLocation
             {
                 Name = "Banovići",
-                PossibleIds = new List<int> { 435 },
+                PossibleIds = new List<int> { 435, 806 },
                 Canton=Canton.Tuzlanski,
+            },
+            new RadarLocation
+            {
+                Name = "Sapna",
+                PossibleIds = new List<int> { 721},
+                Canton=Canton.Tuzlanski,
+            },
+            new RadarLocation
+            {
+                Name = "Teočak",
+                PossibleIds = new List<int> { 745 },
+                Canton=Canton.Tuzlanski,
+            },
+            new RadarLocation
+            {
+                Name = "Sarajevo",
+                PossibleIds = new List<int> { 342,412 },
+                Canton=Canton.Sarajevo,
+            },
+            new RadarLocation
+            {
+                Name = "Brčko",
+                PossibleIds = new List<int> { 4821,4822 },
+                Canton=Canton.BrckoDistrikt,
             },
             
 
@@ -185,6 +209,13 @@ namespace RadarApp.Services
                 MainName = "Vrelo (M-5)",
                 Latitude = 44.244515,
                 Longitude = 17.594268,
+                SpeedLimit = 50
+            },
+            new RadarCoordinate
+            {
+                MainName = "Karaulska cesta",
+                Latitude = 44.245832,
+                Longitude = 17.574472,
                 SpeedLimit = 50
             },
             new RadarCoordinate
@@ -483,7 +514,7 @@ namespace RadarApp.Services
                 (Contains(n, "m-5") || Contains(n, "m5") || Contains(n, "m 5")))
                 return "M-5 Nova Bila";
 
-            if (Contains(n, "nova bila") && Contains(n, "skola"))
+            if (Contains(n, "nova bila") && (Contains(n, "skola") || Contains(n, "skole")))
                 return "Nova Bila (škola)";
 
             if (Contains(n, "nova bila"))
@@ -515,7 +546,7 @@ namespace RadarApp.Services
             if (Contains(n, "puticevo") || Contains(n, "putićevo"))
                 return "Donje Putićevo (M-5)";
 
-            if (Contains(n, "dolac") && Contains(n, "lasvi") && Contains(n, "skola"))
+            if (Contains(n, "dolac") && Contains(n, "lasvi") && (Contains(n, "skola") || Contains(n, "skole")))
                 return "Dolac na Lašvi (škola)";
             if (Contains(n, "dolac") && Contains(n, "lasvi"))
                 return "Dolac na Lašvi";

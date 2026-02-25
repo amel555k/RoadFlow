@@ -324,7 +324,7 @@
                         <Label x:Name="CustomAlertTitle" Text="Greška" FontSize="20" FontAttributes="Bold" TextColor="Black" HorizontalOptions="Center" VerticalOptions="Center"/>
                     </Frame>
                     <Label x:Name="CustomAlertMessage" Grid.Row="1" Text="Došlo je do greške" FontSize="16" TextColor="#2C3E50" HorizontalOptions="Center" VerticalOptions="Center" Padding="20" HorizontalTextAlignment="Center" LineBreakMode="WordWrap"/>
-                    <Button x:Name="CustomAlertButton" Grid.Row="2" Text="U REDU" BackgroundColor="#3498DB" TextColor="White" FontSize="16" FontAttributes="Bold" CornerRadius="10" Margin="20,0,20,15" HeightRequest="45" Clicked="OnCustomAlertButtonClicked"/>
+                    <Button x:Name="CustomAlertButton" Grid.Row="2" Text="U REDU" BackgroundColor="#212143" TextColor="White" FontSize="16" FontAttributes="Bold" CornerRadius="10" Margin="20,0,20,15" HeightRequest="45" Clicked="OnCustomAlertButtonClicked"/>
                 </Grid>
             </Frame>
         </Grid>
