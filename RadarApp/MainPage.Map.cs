@@ -113,8 +113,14 @@ namespace RadarApp
                     return;
                 }
                 _locationService.StartCompass();
-                var currentLocation = await _locationService
-                    .GetCurrentLocationAsync(GeolocationAccuracy.Medium);
+
+
+               var currentLocation = await _locationService.GetCurrentLocationAsync(GeolocationAccuracy.Medium);
+
+                if (currentLocation != null)
+                {
+                    _locationService.SetInitialLocation(currentLocation);
+                }
 
                 var htmlContent = await _mapDataService.LoadHtmlAsync();
 

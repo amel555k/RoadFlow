@@ -297,8 +297,12 @@
                 } 
                 else {
                     if (!window._isMapAnimating) {
-                        map.setCenter([lng, lat]);
-                        map.setBearing(heading);
+                        map.easeTo({
+                            center: [lng, lat],
+                            bearing: heading,
+                            duration: 300,
+                            easing: (t) => t
+                        });
                     }
                 }
             }

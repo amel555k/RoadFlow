@@ -8,15 +8,15 @@ namespace RadarApp.Services
     public class RadarAlertService : IDisposable
     {
         public const double AlertRadiusMeters = 200.0;
-        private const int AlertIntervalSeconds = 3;
 
         private List<RadarCoordinate> _activeRadars = new List<RadarCoordinate>();
         private bool _isInsideZone = false;
         private IAudioPlayer? _audioPlayer;
         private Timer? _alertLoopTimer;
-        public event EventHandler<int>? SpeedLimitChanged;
+        private int _currentSpeedLimit = 0;
+        private double _lastSpeedKmh = 0;
 
-        // Eventi
+        public event EventHandler<int>? SpeedLimitChanged;
         public event EventHandler<bool>? InsideZoneChanged;
 
         public bool IsInsideZone => _isInsideZone;
@@ -30,6 +30,7 @@ namespace RadarApp.Services
         {
             _activeRadars = radars ?? new List<RadarCoordinate>();
         }
+
         public void CheckProximity(Location userLocation)
         {
             if (userLocation == null || _activeRadars == null || !_activeRadars.Any())
@@ -52,13 +53,27 @@ namespace RadarApp.Services
 
             if (nearestRadar != null && !_isInsideZone)
             {
-                EnterZone(nearestRadar.radar.SpeedLimit);
+                double speedKmh = (userLocation.Speed ?? 0) * 3.6;
+                EnterZone(nearestRadar.radar.SpeedLimit, speedKmh);
+            }
+            else if (nearestRadar != null && _isInsideZone)
+            {
+                double speedKmh = (userLocation.Speed ?? 0) * 3.6;
+                int newInterval = GetAlertInterval(speedKmh, _currentSpeedLimit);
+                int currentInterval = GetAlertInterval(_lastSpeedKmh, _currentSpeedLimit);
+
+                if (newInterval != currentInterval)
+                {
+                    _lastSpeedKmh = speedKmh;
+                    StartAlertLoop(speedKmh);
+                }
             }
             else if (nearestRadar == null && _isInsideZone)
             {
                 ExitZone();
             }
         }
+
         public void StopAlerts()
         {
             if (_isInsideZone)
@@ -67,30 +82,45 @@ namespace RadarApp.Services
             }
         }
 
-      private void EnterZone(int speedLimit = 0)
-    {
-        _isInsideZone = true;
-        InsideZoneChanged?.Invoke(this, true);
-        SpeedLimitChanged?.Invoke(this, speedLimit);
-        StartAlertLoop();
-    }
-
-    private void ExitZone()
-    {
-        _isInsideZone = false;
-        InsideZoneChanged?.Invoke(this, false);
-        SpeedLimitChanged?.Invoke(this, 0);
-        StopAlertLoop();
-    }
-        private void StartAlertLoop()
+        private int GetAlertInterval(double speedKmh, int speedLimit)
         {
+            if (speedLimit <= 0) return 3;
+            double over = speedKmh - speedLimit;
+            if (over >= 10) return 1;
+            if (over >= 5) return 2;
+            return 3;
+        }
+
+        private void EnterZone(int speedLimit = 0, double currentSpeedKmh = 0)
+        {
+            _isInsideZone = true;
+            _currentSpeedLimit = speedLimit;
+            _lastSpeedKmh = currentSpeedKmh;
+            InsideZoneChanged?.Invoke(this, true);
+            SpeedLimitChanged?.Invoke(this, speedLimit);
+            StartAlertLoop(currentSpeedKmh);
+        }
+
+        private void ExitZone()
+        {
+            _isInsideZone = false;
+            _currentSpeedLimit = 0;
+            _lastSpeedKmh = 0;
+            InsideZoneChanged?.Invoke(this, false);
+            SpeedLimitChanged?.Invoke(this, 0);
+            StopAlertLoop();
+        }
+
+        private void StartAlertLoop(double currentSpeedKmh = 0)
+        {
+            int interval = GetAlertInterval(currentSpeedKmh, _currentSpeedLimit);
             PlayBeep();
             _alertLoopTimer?.Dispose();
             _alertLoopTimer = new Timer(
                 (state) => MainThread.BeginInvokeOnMainThread(PlayBeep),
                 null,
-                TimeSpan.FromSeconds(AlertIntervalSeconds),
-                TimeSpan.FromSeconds(AlertIntervalSeconds));
+                TimeSpan.FromSeconds(interval),
+                TimeSpan.FromSeconds(interval));
         }
 
         private void StopAlertLoop()
@@ -103,7 +133,6 @@ namespace RadarApp.Services
         {
             try
             {
-
                 if (Vibration.Default.IsSupported)
                 {
                     Vibration.Default.Vibrate(TimeSpan.FromMilliseconds(500));

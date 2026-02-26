@@ -20,6 +20,10 @@ namespace RadarApp.Services
         public event EventHandler<double>? CompassChanged;
 
         public Location? CurrentLocation => _currentLocation;
+        public void SetInitialLocation(Location location)
+        {
+            _currentLocation = location;
+        }
         public double CurrentHeading => _currentCompassHeading;
         public bool IsTrackingActive => _isTrackingActive;
         public async Task StartContinuousTrackingAsync()
