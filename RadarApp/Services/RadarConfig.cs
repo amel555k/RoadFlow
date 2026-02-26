@@ -155,13 +155,13 @@ namespace RadarApp.Services
             new RadarLocation
             {
                 Name = "Sapna",
-                PossibleIds = new List<int> { 721},
+                PossibleIds = new List<int> { 721,1551},
                 Canton=Canton.Tuzlanski,
             },
             new RadarLocation
             {
                 Name = "Teočak",
-                PossibleIds = new List<int> { 745 },
+                PossibleIds = new List<int> { 745,3242},
                 Canton=Canton.Tuzlanski,
             },
             new RadarLocation
@@ -492,10 +492,10 @@ namespace RadarApp.Services
            var n = StripDiacritics(raw.ToLowerInvariant().Trim());
     
             
-            if (Contains(n, "lokalna") && Contains(n, "divjak"))
+            if (Contains(n, "lok") && Contains(n, "divjak"))
                 return "Lokalna cesta Divjak";
             
-            if (Contains(n, "lokalna") && (Contains(n, "pc 96") || Contains(n, "pc96") || Contains(n, "krcevine")))
+            if (Contains(n, "lok") && (Contains(n, "pc 96") || Contains(n, "pc96") || Contains(n, "krcevine")))
                 return "lokalna cesta PC 96 II, Krčevine";
 
             n = RemoveStreetPrefixes(n);
@@ -539,6 +539,9 @@ namespace RadarApp.Services
 
             if (Contains(n, "vrelo"))
                 return "Vrelo (M-5)";
+                
+            if (Contains(n, "karaulska"))
+                return "Karaulska cesta";
 
             if (Contains(n, "turbe"))
                 return "Turbe (M-5)";

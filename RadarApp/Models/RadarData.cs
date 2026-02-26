@@ -9,6 +9,7 @@ namespace RadarApp.Models
         public string Location { get; set; }
         public DateTime? PageDate { get; set; }
         public RadarCoordinate Coordinate { get; set; }
+        public List<RadarCoordinate> AllCoordinates { get; set; }
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
         public int? SpeedLimit { get; set; }

@@ -36,6 +36,14 @@
                                 Padding="0"
                                 HorizontalOptions="Start"
                                 VerticalOptions="Center"/>
+
+                        <Label x:Name="LblCurrentDate"
+                                TextColor="White"
+                                FontSize="18"
+                                FontAttributes="Bold"
+                                HorizontalOptions="Center"
+                                VerticalOptions="Center"/>
+                                
                         <ImageButton x:Name="BtnRefresh"
                                      Clicked="OnRefreshClicked"
                                      BackgroundColor="Transparent"
@@ -93,13 +101,14 @@
                     </Frame>
 
                     <Label x:Name="LblNemaData"
-                           Grid.Row="0"
-                           Text="Nema dostupnih podataka"
-                           FontSize="16"
-                           TextColor="Gray"
-                           HorizontalOptions="Center"
-                           Margin="0,60,0,0"
-                           IsVisible="False"/>
+                            Grid.Row="1" 
+                            Text="Nema dostupnih podataka"
+                            FontSize="16"
+                            TextColor="Gray"
+                            HorizontalOptions="Center"
+                            VerticalOptions="Center" 
+                            IsVisible="False"
+                            ZIndex="1"/>
 
                     <CollectionView x:Name="RadarListContainer"
                                     Grid.Row="1"

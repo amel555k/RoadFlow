@@ -29,8 +29,19 @@ namespace RadarApp.Services
 
         public async Task<List<RadarData>> ParseAllLocationsAsync()
         {
-            var rawRadars = new List<RadarData>();
             var todayDate = DateTime.Today;
+            
+            if (File.Exists(_filePath))
+            {
+                var lastWriteTime = File.GetLastWriteTime(_filePath);
+                if (lastWriteTime.Date == todayDate)
+                {
+                    System.Diagnostics.Debug.WriteLine("Učitavam radare iz lokalnog keša (lista.txt)...");
+                    var cachedContent = await ReadFromFileAsync();
+                    return ParseFileContent(cachedContent);
+                }
+            }
+            var rawRadars = new List<RadarData>();
 
             lock (_htmlCache) { _htmlCache.Clear(); }
 
@@ -94,13 +105,19 @@ namespace RadarApp.Services
                     PageDate = DateTime.Now
                 });
             }
-            var sb = new StringBuilder();
-            var grouped = finalRadars.GroupBy(r => r.City);
 
-            foreach (var group in grouped)
+          var uniqueRadars = finalRadars
+                .GroupBy(r => new { r.City, r.Time, r.Location })
+                .Select(g => g.First())
+                .ToList();
+
+            var sb = new StringBuilder();
+            var groupedByCity = uniqueRadars.GroupBy(r => r.City);
+
+            foreach (var cityGroup in groupedByCity)
             {
-                sb.AppendLine($"=== {group.Key} ===");
-                foreach (var radar in group)
+                sb.AppendLine($"=== {cityGroup.Key} ===");
+                foreach (var radar in cityGroup)
                 {
                     sb.AppendLine($"{radar.Time} - {radar.Location}");
                 }
@@ -109,7 +126,7 @@ namespace RadarApp.Services
 
             await SaveToFileAsync(sb.ToString());
 
-            return finalRadars;
+            return uniqueRadars;
         }
 
 
@@ -322,13 +339,15 @@ namespace RadarApp.Services
             try
             {
                 await File.WriteAllTextAsync(_filePath, content, Encoding.UTF8);
-                var downloadsPath = Android.OS.Environment.GetExternalStoragePublicDirectory(
-                Android.OS.Environment.DirectoryDownloads).AbsolutePath;
-                var destPath = Path.Combine(downloadsPath, "lista.txt");
-                File.Copy(_filePath, destPath, overwrite: true);
+                File.SetLastWriteTime(_filePath, DateTime.Now);
+                
+                System.Diagnostics.Debug.WriteLine($"Podaci sačuvani u {_filePath}");
             }
-            catch { }
-        }
+            catch (Exception ex) 
+            {
+                System.Diagnostics.Debug.WriteLine($"Greška pri čuvanju fajla: {ex.Message}");
+            }
+}
 
         public async Task<string> ReadFromFileAsync()
         {
@@ -370,42 +389,38 @@ namespace RadarApp.Services
                 var parts = trimmed.Split(new[] { " - " }, 2, StringSplitOptions.None);
                 if (parts.Length == 2)
                 {
+                    var timePart = parts[0].Trim();
                     var locationName = parts[1].Trim();
-
                     var coordinates = RadarConfig.FindCoordinatesByName(locationName);
+
+                    var radar = new RadarData
+                    {
+                        City = currentCity,
+                        Time = timePart,
+                        Location = locationName,
+                        PageDate = DateTime.Now
+                    };
 
                     if (coordinates.Any())
                     {
-                        foreach (var coordinate in coordinates)
-                        {
-                            radars.Add(new RadarData
-                            {
-                                City = currentCity,
-                                Time = parts[0].Trim(),
-                                Location = locationName,
-                                PageDate = DateTime.Now,
-                                Coordinate = coordinate,
-                                Latitude = coordinate.Latitude,
-                                Longitude = coordinate.Longitude,
-                                SpeedLimit = coordinate.SpeedLimit
-                            });
-                        }
+                        var first = coordinates.First();
+                        radar.Coordinate = first;
+                        radar.Latitude = first.Latitude;
+                        radar.Longitude = first.Longitude;
+                        radar.SpeedLimit = first.SpeedLimit;
+                        
+                        radar.AllCoordinates = coordinates; 
                     }
-                    else
-                    {
-                        radars.Add(new RadarData
-                        {
-                            City = currentCity,
-                            Time = parts[0].Trim(),
-                            Location = locationName,
-                            PageDate = DateTime.Now
-                        });
-                    }
+
+                    radars.Add(radar);
                 }
             }
-            return radars;
-        }
-        private bool CityNameExistsInHtml(string htmlText, string cityName)
+
+            return radars
+                .GroupBy(r => new { r.City, r.Time, r.Location })
+                .Select(g => g.First())
+                .ToList();
+        }        private bool CityNameExistsInHtml(string htmlText, string cityName)
         {
             if (string.IsNullOrWhiteSpace(htmlText) || string.IsNullOrWhiteSpace(cityName))
                 return false;

@@ -126,6 +126,7 @@ namespace RadarApp
         public MainPage()
         {
             InitializeComponent();
+            LblCurrentDate.Text = DateTime.Now.ToString("dd.MM.yyyy");
             _parser = new RadarParser();
             _locationService = new LocationTrackingService();
             _alertService = new RadarAlertService();
@@ -470,15 +471,15 @@ private void CloseDropdown()
 
         private void DisplayRadarData(List<RadarData> radars)
         {
-            if (radars == null || radars.Count == 0)
+           LblNemaData.IsVisible = false;
+            if (radars == null)
             {
                 LblNemaData.IsVisible = true;
                 RadarListContainer.ItemsSource = null;
                 return;
             }
 
-            LblNemaData.IsVisible = false;
-
+            
             var filteredRadars = radars.AsEnumerable();
             if (_selectedCanton.HasValue)
             {
@@ -490,9 +491,17 @@ private void CloseDropdown()
                 filteredRadars = filteredRadars.Where(r => citiesInCanton.Contains(r.City));
             }
 
-            var flatList = new List<RadarFlatItem>();
+            var filteredList = filteredRadars.ToList();
 
-            var cityGroups = filteredRadars
+            if (filteredList.Count == 0)
+            {
+                LblNemaData.IsVisible = true;
+                RadarListContainer.ItemsSource = null;
+                return;
+            }
+
+            var flatList = new List<RadarFlatItem>();
+            var cityGroups = filteredList
                 .GroupBy(r => r.City)
                 .Select(g => new { CityName = g.Key, Radars = g.ToList() })
                 .ToList();
