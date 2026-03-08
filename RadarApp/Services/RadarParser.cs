@@ -16,6 +16,7 @@ namespace RadarApp.Services
     public class RadarParser
     {
         private readonly HttpClient _httpClient;
+        private readonly FirebaseService _firebaseService=new FirebaseService();
         private readonly string _filePath;
         private const string BaseUrl = "***REMOVED***";
 
@@ -42,6 +43,9 @@ namespace RadarApp.Services
                 }
             }
             var rawRadars = new List<RadarData>();
+            
+            var firebaseData= await _firebaseService.GetFirebaseRadarsAsync(todayDate);
+            rawRadars.AddRange(firebaseData);
 
             lock (_htmlCache) { _htmlCache.Clear(); }
 
@@ -64,6 +68,8 @@ namespace RadarApp.Services
 
             foreach (var location in RadarConfig.Locations)
             {
+                if(location.FromFirebase) continue;
+                
                 foreach (var id in location.PossibleIds)
                 {
                     taskTuples.Add((location.Name, id, ParseSingleIdWithErrorHandlingAsync(location.Name, id, location.MapEnabled)));
@@ -90,7 +96,8 @@ namespace RadarApp.Services
             .Where(r => r.Time != "INFO")
             .GroupBy(r => new { r.City, r.Time, r.Location })
             .Select(g => g.First())
-            .OrderByDescending(r => r.PageDate ?? DateTime.MinValue)
+            .OrderByDescending(r=>r.City)
+            .ThenByDescending(r => r.PageDate ?? DateTime.MinValue)
             .ToList();
 
             if (!finalRadars.Any(r => r.Time != "INFO"))

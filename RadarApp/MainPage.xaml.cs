@@ -25,6 +25,26 @@ namespace RadarApp
 
     public partial class MainPage : ContentPage
     {
+        private readonly RadarParser _parser;
+        private List<RadarData> _currentRadars;
+        private Canton? _selectedCanton = Canton.Srednjobosanski;
+        private readonly LocationTrackingService _locationService;
+        private readonly RadarAlertService _alertService;
+        private readonly MapDataService _mapDataService;
+        private readonly RadarHistoryService _historyService;
+        private bool _isMapLoaded = false;
+        private bool _isMapJsReady = false;
+        private bool _isTrackingActive = false;
+        private bool _isMenuOpen = false;
+        private bool _isFirstMapLoad = true;
+        private bool _isListViewActive = true;
+        private bool _isFirstListLoad = true;
+        private bool _isDropdownOpen = false;
+        private bool _initialCameraPositioned = false;
+
+        private List<CantonPickerItem> _cantonList;
+        private CantonPickerItem _currentSelectedItem;
+
         public static readonly DataTemplateSelector RadarFlatItemTemplate = new RadarFlatItemTemplateSelector
         {
             HeaderTemplate = new DataTemplate(() =>
@@ -49,79 +69,66 @@ namespace RadarApp
                 frame.Content = label;
                 return frame;
             }),
-            ItemTemplate = new DataTemplate(() =>
-{
-    var outer = new Border
-    {
-        Stroke = Colors.Transparent,
-        StrokeThickness = 0,
-        BackgroundColor = Color.FromArgb("#D9D9D9"),
-        StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 8 },
-        Padding = new Thickness(8)
-    };
-    outer.SetBinding(Border.MarginProperty, nameof(RadarFlatItem.ItemMargin));
+           ItemTemplate = new DataTemplate(() =>
+            {
+                var mainContainer = new Grid
+                {
+                    BackgroundColor = Color.FromArgb("#D9D9D9"),
+                    Padding = new Thickness(10,12)
+                };
+                mainContainer.SetBinding(Grid.MarginProperty, new Binding(nameof(RadarFlatItem.Position), converter: new PositionToMarginConverter()));
 
-    var inner = new Border
-    {
-        Stroke = Colors.Transparent,
-        StrokeThickness = 0,
-        BackgroundColor = Colors.White,
-        StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 10 },
-        Padding = new Thickness(10, 5)
-    };
+                var inner = new Border
+                {
+                    Stroke = Colors.Transparent,
+                    StrokeThickness = 0,
+                    BackgroundColor = Colors.White,
+                    StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 8 },
+                    Padding = new Thickness(12, 8),
+                    Margin = new Thickness(0, 2) 
+                };
 
-    var grid = new Grid { ColumnSpacing = 10 };
-    grid.ColumnDefinitions.Add(new ColumnDefinition { Width = 70 });
-    grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+                var grid = new Grid { ColumnSpacing = 10 };
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = 70 });
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
 
-    var timeLabel = new Label
-    {
-        FontSize = 14,
-        FontAttributes = FontAttributes.Bold,
-        TextColor = Colors.Black,
-        VerticalOptions = LayoutOptions.Center
-    };
-    timeLabel.SetBinding(Label.TextProperty, nameof(RadarFlatItem.Time));
+                var timeLabel = new Label
+                {
+                    FontSize = 14,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = Colors.Black,
+                    VerticalOptions = LayoutOptions.Center
+                };
+                timeLabel.SetBinding(Label.TextProperty, nameof(RadarFlatItem.Time));
 
-    var locationLabel = new Label
-    {
-        FontSize = 14,
-        TextColor = Colors.Black,
-        LineBreakMode = LineBreakMode.TailTruncation,
-        VerticalOptions = LayoutOptions.Center
-    };
-    locationLabel.SetBinding(Label.TextProperty, nameof(RadarFlatItem.Location));
+                var locationLabel = new Label
+                {
+                    FontSize = 14,
+                    TextColor = Colors.Black,
+                    LineBreakMode = LineBreakMode.NoWrap,
+                    VerticalOptions = LayoutOptions.Center
+                };
+                locationLabel.SetBinding(Label.TextProperty, nameof(RadarFlatItem.Location));
 
-    Grid.SetColumn(timeLabel, 0);
-    Grid.SetColumn(locationLabel, 1);
-    grid.Children.Add(timeLabel);
-    grid.Children.Add(locationLabel);
+                var locationScroll = new ScrollView
+                {
+                    Orientation = ScrollOrientation.Horizontal,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Never,
+                    VerticalOptions = LayoutOptions.Center,
+                    Content = locationLabel
+                };
 
-    inner.Content = grid;
-    outer.Content = inner;
-    return outer;
-})
+                Grid.SetColumn(timeLabel, 0);
+                Grid.SetColumn(locationScroll, 1);
+                grid.Children.Add(timeLabel);
+                grid.Children.Add(locationScroll);
+
+                inner.Content = grid;
+                mainContainer.Children.Add(inner);
+
+                return mainContainer;
+            })
         };
-
-        private readonly RadarParser _parser;
-        private List<RadarData> _currentRadars;
-        private Canton? _selectedCanton = Canton.Srednjobosanski;
-        private readonly LocationTrackingService _locationService;
-        private readonly RadarAlertService _alertService;
-        private readonly MapDataService _mapDataService;
-        private readonly RadarHistoryService _historyService;
-        private bool _isMapLoaded = false;
-        private bool _isMapJsReady = false;
-        private bool _isTrackingActive = false;
-        private bool _isMenuOpen = false;
-        private bool _isFirstMapLoad = true;
-        private bool _isListViewActive = true;
-        private bool _isFirstListLoad = true;
-        private bool _isDropdownOpen = false;
-        private bool _initialCameraPositioned = false;
-
-        private List<CantonPickerItem> _cantonList;
-        private CantonPickerItem _currentSelectedItem;
 
         public MainPage()
         {
@@ -174,27 +181,27 @@ namespace RadarApp
             else OpenDropdown();
         }
         private void OpenDropdown()
-{
-    _isDropdownOpen = true;
-    DropdownDismissOverlay.IsVisible = true;
-    LblPickerArrow.Text = "▲";
+        {
+            _isDropdownOpen = true;
+            DropdownDismissOverlay.IsVisible = true;
+            LblPickerArrow.Text = "▲";
 
-    double screenWidth = DeviceDisplay.MainDisplayInfo.Width / DeviceDisplay.MainDisplayInfo.Density;
-    double rightPadding = 25;
-    double dropdownWidth = 220;
-    double xPos = screenWidth - dropdownWidth - rightPadding;
-    AbsoluteLayout.SetLayoutBounds(PickerDropdown, new Rect(xPos, 58, dropdownWidth, 420));
+            double screenWidth = DeviceDisplay.MainDisplayInfo.Width / DeviceDisplay.MainDisplayInfo.Density;
+            double rightPadding = 25;
+            double dropdownWidth = 220;
+            double xPos = screenWidth - dropdownWidth - rightPadding;
+            AbsoluteLayout.SetLayoutBounds(PickerDropdown, new Rect(xPos, 58, dropdownWidth, 420));
 
-    PickerDropdown.IsVisible = true;
-}
+            PickerDropdown.IsVisible = true;
+        }
 
-private void CloseDropdown()
-{
-    _isDropdownOpen = false;
-    PickerDropdown.IsVisible = false;
-    DropdownDismissOverlay.IsVisible = false;
-    LblPickerArrow.Text = "▼";
-}
+        private void CloseDropdown()
+        {
+            _isDropdownOpen = false;
+            PickerDropdown.IsVisible = false;
+            DropdownDismissOverlay.IsVisible = false;
+            LblPickerArrow.Text = "▼";
+        }
         private void OnDropdownDismissOverlayTapped(object sender, EventArgs e)
         {
             CloseDropdown();
@@ -552,7 +559,6 @@ private void CloseDropdown()
         }
     }
 
-
     public class RadarListBindingContext
     {
         public List<CityGroupViewModel> CityGroups { get; set; }
@@ -565,4 +571,21 @@ private void CloseDropdown()
         public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
             => throw new NotImplementedException();
     }
+    public class PositionToMarginConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is RadarGroupPosition pos)
+            {
+                if (pos == RadarGroupPosition.Last || pos == RadarGroupPosition.Only)
+                {
+                    return new Thickness(0, 0, 0, 25); 
+                }
+            }
+            return new Thickness(0);
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) 
+            => throw new NotImplementedException();
+}
 }

@@ -14,69 +14,80 @@ namespace RadarApp.Services
                 Name = "Travnik",
                 PossibleIds = new List<int> { 417, 415 },
                 Canton=Canton.Srednjobosanski,
-                MapEnabled=true
+                MapEnabled=true,
+                FromFirebase=true
             },
             new RadarLocation
             {
                 Name = "Vitez",
                 PossibleIds = new List<int> { 400, 330 },
                 Canton=Canton.Srednjobosanski,
-                MapEnabled=true
+                MapEnabled=true,
+                FromFirebase=true
             },
             
             new RadarLocation
             {
                 Name = "Fojnica",
                 PossibleIds = new List<int> { 418, 360 },
-                Canton=Canton.Srednjobosanski
+                Canton=Canton.Srednjobosanski,
+                FromFirebase=true
             },
             new RadarLocation
             {
                 Name = "Donji Vakuf",
                 PossibleIds = new List<int> { 419, 416 },
-                Canton=Canton.Srednjobosanski
+                Canton=Canton.Srednjobosanski,
+                FromFirebase=true
             }, 
             new RadarLocation
             {
                 Name = "Bugojno",
                 PossibleIds = new List<int> { 402, 332 },
-                Canton=Canton.Srednjobosanski
+                Canton=Canton.Srednjobosanski,
+                FromFirebase=true
             },
             new RadarLocation
             {
                 Name = "Jajce",
                 PossibleIds = new List<int> { 335, 404 },
-                Canton=Canton.Srednjobosanski
+                Canton=Canton.Srednjobosanski,
+                FromFirebase=true
             },
             new RadarLocation
             {
-                Name = "Gornji Vakuf",
+                Name = "Gornji Vakuf-Uskoplje",
                 PossibleIds = new List<int> { 333, 403 },
-                Canton=Canton.Srednjobosanski
+                Canton=Canton.Srednjobosanski,
+                FromFirebase=true
             },
             new RadarLocation
             {
                 Name = "Busovača",
                 PossibleIds = new List<int> { 336, 405 },
-                Canton=Canton.Srednjobosanski
+                Canton=Canton.Srednjobosanski,
+                FromFirebase=true
             },
             new RadarLocation
             {
                 Name = "Kiseljak",
                 PossibleIds = new List<int> { 334, 420 },
-                Canton=Canton.Srednjobosanski
+                Canton=Canton.Srednjobosanski,
+                FromFirebase=true
             },
             new RadarLocation
             {
                 Name = "Novi Travnik",
                 PossibleIds = new List<int> { 401, 331 },
-                Canton=Canton.Srednjobosanski
+                Canton=Canton.Srednjobosanski,
+                FromFirebase=true
             },
             new RadarLocation
             {
                 Name="Kreševo",
                 PossibleIds=new List<int>{697},
-                Canton=Canton.Srednjobosanski
+                Canton=Canton.Srednjobosanski,
+                FromFirebase=true
             },
              new RadarLocation
             {
@@ -177,10 +188,9 @@ namespace RadarApp.Services
                 Canton=Canton.BrckoDistrikt,
             },
             
-
+        
 
         };
-
         public static List<RadarCoordinate> Coordinates = new List<RadarCoordinate>
         {
             new RadarCoordinate

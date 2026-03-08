@@ -7,6 +7,7 @@ namespace RadarApp.Models
         public string Name { get; set; }
         public List<int> PossibleIds { get; set; }
         public Canton Canton {get;set;}
-        public bool MapEnabled{get;set;} = false;
+        public bool MapEnabled {get;set;} = false;
+        public bool FromFirebase {get;set; } = false;
     }
 }

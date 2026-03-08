@@ -376,6 +376,7 @@ public partial class MainPage
 
         var cityGroups = validRadars
             .GroupBy(r => r.City)
+            .OrderByDescending(g=>g.Key)
             .Select(g => new { CityName = g.Key, Radars = g.OrderBy(r => r.Time).ToList() })
             .ToList();
 

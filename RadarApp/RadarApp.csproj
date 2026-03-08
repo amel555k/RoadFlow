@@ -64,17 +64,7 @@
     <PackageReference Include="Plugin.Maui.Audio" Version="4.0.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Update="MapPage.xaml.cs">
-      <DependentUpon>MapPage.xaml</DependentUpon>
-    </Compile>
-  </ItemGroup>
 
-  <ItemGroup>
-    <MauiXaml Update="MapPage.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </MauiXaml>
-  </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Pages\" />

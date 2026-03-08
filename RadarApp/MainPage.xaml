@@ -21,8 +21,11 @@
             </Grid.RowDefinitions>
 
             <Frame Grid.Row="0"
-                   BackgroundColor="#212143"
-                   Padding="10">
+                    BackgroundColor="#212143"
+                    Padding="10"
+                    CornerRadius="0"
+                    HasShadow="False"
+                    >
                 <VerticalStackLayout Spacing="2">
                     <Grid>
                         <Button x:Name="BtnBurgerMenu"
@@ -45,15 +48,15 @@
                                 VerticalOptions="Center"/>
                                 
                         <ImageButton x:Name="BtnRefresh"
-                                     Clicked="OnRefreshClicked"
-                                     BackgroundColor="Transparent"
-                                     Source="refresh.png"
-                                     HeightRequest="40"
-                                     WidthRequest="40"
-                                     Padding="0"
-                                     CornerRadius="20"
-                                     HorizontalOptions="End"
-                                     VerticalOptions="Center"/>
+                                Clicked="OnRefreshClicked"
+                                BackgroundColor="transparent"
+                                Source="refresh.png"
+                                HeightRequest="20"
+                                WidthRequest="20"
+                                Padding="2"
+                                CornerRadius="20"
+                                HorizontalOptions="End"
+                                VerticalOptions="Center"/>
                     </Grid>
                     <ActivityIndicator x:Name="LoadingIndicator"
                                        IsRunning="False"

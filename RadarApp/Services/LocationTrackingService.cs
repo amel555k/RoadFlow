@@ -10,7 +10,6 @@ namespace RadarApp.Services
         private Location? _currentLocation;
         private double _currentCompassHeading = 0;
         private bool _isTrackingActive = false;
-        
         private Timer? _locationUpdateTimer;
         private CancellationTokenSource? _locationListeningCts;
         private GeolocationAccuracy _currentAccuracy = GeolocationAccuracy.Medium;
