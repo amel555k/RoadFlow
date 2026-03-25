@@ -320,7 +320,7 @@
         }
         
 
-        function addRadarMarker(lng, lat, name, description, speedLimit) {
+        function addRadarMarker(lng, lat, name, description, speedLimit, stacionaran) {
             try {
                 var popupContent = '<strong>' + name + '</strong>';
                 if (description && description !== "") {
@@ -331,7 +331,8 @@
                     popupContent += '<br><span class="speed-limit">Ograničenje: <span class="speed-limit-value">' + speedLimit + ' km/h</span></span>';
                 }
 
-                var marker = new mapboxgl.Marker({ color: '#FF0000' })
+                var markerColor = stacionaran ? '#0B2A63' : '#FF0000'; // tamno-plavo za stacionarne
+                var marker = new mapboxgl.Marker({ color: markerColor })
                     .setLngLat([lng, lat])
                     .setPopup(new mapboxgl.Popup({ offset: 35 }).setHTML(popupContent))
                     .addTo(map);
@@ -349,7 +350,7 @@
                     clearRadarMarkers();
                     if (!radars || !radars.forEach) return;
                     radars.forEach(function (r) {
-                        addRadarMarker(r.longitude, r.latitude, r.name, r.description, r.speedLimit);
+                            addRadarMarker(r.longitude, r.latitude, r.name, r.description, r.speedLimit, r.stacionaran);
                     });
 
                     drawRadarZones();

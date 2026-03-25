@@ -1,4 +1,4 @@
-﻿using RadarApp.Models;
+using RadarApp.Models;
 using RadarApp.Services;
 
 namespace RadarApp;

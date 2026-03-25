@@ -1,4 +1,4 @@
-﻿using Microsoft.Maui.Devices.Sensors;
+using Microsoft.Maui.Devices.Sensors;
 using RadarApp.Models;
 using System.Globalization;
 using System.Text.Json;
@@ -75,12 +75,37 @@ namespace RadarApp.Services
     
         public async Task<List<RadarCoordinate>> LoadRadarsByFilterAsync(RadarFilterType filterType)
         {
-            return filterType switch
+            return await LoadRadarsByFilterAsync(filterType, showStacionarni: true);
+        }
+
+        public async Task<List<RadarCoordinate>> LoadRadarsByFilterAsync(
+            RadarFilterType filterType,
+            bool showStacionarni)
+        {
+            var timedRadars = filterType switch
             {
                 RadarFilterType.Active => await LoadActiveRadarsAsync(),
                 RadarFilterType.Today => await LoadAllRadarsFromListAsync(),
                 _ => new List<RadarCoordinate>()
             };
+
+            var list = timedRadars
+                .Where(c => !c.Stacionaran)
+                .ToList();
+
+            if (showStacionarni)
+                AddStacionarniRadars(list);
+
+            return list;
+        }
+
+        private void AddStacionarniRadars(List<RadarCoordinate> list)
+        {
+            foreach (var coord in RadarConfig.Coordinates.Where(c => c.Stacionaran))
+            {
+                coord.StartTime = "00:00 do 24:00";
+                list.Add(coord);
+            }
         }
 
         public string GenerateRadarRenderScript(List<RadarCoordinate> radars)
@@ -91,7 +116,8 @@ namespace RadarApp.Services
                 latitude = c.Latitude,
                 name = c.MainName,
                 description = c.StartTime,
-                speedLimit = c.SpeedLimit
+                speedLimit = c.SpeedLimit,
+                stacionaran = c.Stacionaran
             });
 
             string json = JsonSerializer.Serialize(dto);
@@ -105,7 +131,8 @@ namespace RadarApp.Services
                 latitude = c.Latitude,
                 name = c.MainName,
                 description = c.StartTime,
-                speedLimit = c.SpeedLimit
+                speedLimit = c.SpeedLimit,
+                stacionaran = c.Stacionaran
             }));
             
             return html.Insert(html.IndexOf("map.on('load'"), $"window._initialRadars = {json};\n");

@@ -15,8 +15,7 @@ namespace RadarApp.Models
         public string CityName { get; set; }
         public string Time { get; set; }
         public string Location { get; set; }
-
-        // Napomena: Za Thickness ti treba Microsoft.Maui
+        
         public Microsoft.Maui.Thickness ItemMargin =>
             Position == RadarGroupPosition.Last || Position == RadarGroupPosition.Only
                 ? new Microsoft.Maui.Thickness(0, 0, 0, 10)

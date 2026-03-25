@@ -1,4 +1,4 @@
-﻿using Microsoft.Maui.Controls;
+using Microsoft.Maui.Controls;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Devices.Sensors;
 using RadarApp.Services;
@@ -11,7 +11,6 @@ namespace RadarApp
 {
     public partial class MainPage : ContentPage
     {
-
         private async void OnWebViewNavigating(object? sender, WebNavigatingEventArgs e)
         {
             if (e.Url.StartsWith("updateradarfilter://"))
@@ -124,7 +123,8 @@ namespace RadarApp
 
                 var htmlContent = await _mapDataService.LoadHtmlAsync();
 
-                var activeRadars = await _mapDataService.LoadActiveRadarsAsync();
+                var activeRadars = await _mapDataService.LoadRadarsByFilterAsync(
+                    MapDataService.RadarFilterType.Active);
 
                 _alertService.SetActiveRadars(activeRadars);
 
@@ -159,7 +159,7 @@ namespace RadarApp
         }
 
         private async Task UpdateRadarPinsAsync(
-            MapDataService.RadarFilterType filterType)
+           MapDataService.RadarFilterType filterType)
         {
             var coords = await _mapDataService
                 .LoadRadarsByFilterAsync(filterType);

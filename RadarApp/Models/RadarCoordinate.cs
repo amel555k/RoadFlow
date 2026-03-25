@@ -1,4 +1,4 @@
-﻿namespace RadarApp.Models
+namespace RadarApp.Models
 {
     public class RadarCoordinate
     {
@@ -8,5 +8,6 @@
         public int SpeedLimit { get; set; }
         public string StartTime { get; set; }
         public string EndTime { get; set; }
+        public bool Stacionaran { get; set; } = false;
     }
 }

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using RadarApp.Models;
@@ -479,6 +479,26 @@ namespace RadarApp.Services
                 Latitude = 44.180971,
                 Longitude = 17.752092,
                 SpeedLimit = 50
+            },
+
+            //STACIONIRANI RADARI
+
+            new RadarCoordinate
+            {
+                MainName = "Stacionarni Radar - ul. Šehida, Travnik",
+                Latitude = 44.227014,
+                Longitude = 17.664612,
+                SpeedLimit = 50,
+                Stacionaran = true
+            },
+
+            new RadarCoordinate
+            {
+                MainName = "Stacionarni Radar - Vitez (kod Impregnacije)",
+                Latitude = 44.151029,
+                Longitude = 17.805830,
+                SpeedLimit = 50,
+                Stacionaran = true
             }
         };
         public static List<RadarCoordinate> FindCoordinatesByName(string locationName)
