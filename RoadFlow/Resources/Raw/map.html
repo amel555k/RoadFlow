@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.css" rel="stylesheet" />
+    <link href="map.css" rel="stylesheet" />
+</head>
+<body>
+    <div id="map"></div>
+
+  <button id="btnTrackingToggle" onclick="handleTrackingToggle()">KRENI</button>
+
+    <div id="speedDisplay">
+        <span id="speedValue">0</span>
+        <span id="speedUnit">km/h</span>
+    </div>
+    <div id="speedLimitDisplay" style="display:none;">
+        <div id="speedLimitCircle">
+            <span id="speedLimitValue">0</span>
+        </div>
+    </div>
+
+    <div class="filter-buttons">
+        <button id="btnAktivni" class="filter-btn active" onclick="toggleFilter('active')">AKTIVNI</button>
+        <button id="btnSvi" class="filter-btn inactive" onclick="toggleFilter('today')">DANAS</button>
+        
+    </div>
+    <script src="MapConfig.js"></script>
+    <script>
+        mapboxgl.accessToken = MapSettings.accessToken;
+
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v12',
+            center: [18.4131, 43.8563],
+            zoom: 12,
+            minZoom: 6
+        });
+
+        window._radarMarkers = [];
+        window._userMarker = null;
+        window._isTrackingMode = false;
+        window._currentRadarsData = [];
+        window._radarRadiusMeters = 200;
+
+        function createGeoJSONCircle(center, radiusInMeters, points) {
+            if (!points) points = 64;
+            var coords = { latitude: center[1], longitude: center[0] };
+            var km = radiusInMeters / 1000;
+            var ret = [];
+            var distanceX = km / (111.320 * Math.cos(coords.latitude * Math.PI / 180));
+            var distanceY = km / 110.574;
+
+            var theta, x, y;
+            for (var i = 0; i < points; i++) {
+                theta = (i / points) * (2 * Math.PI);
+                x = distanceX * Math.cos(theta);
+                y = distanceY * Math.sin(theta);
+                ret.push([coords.longitude + x, coords.latitude + y]);
+            }
+            ret.push(ret[0]);
+            return [ret];
+        }
+        window.showSpeedLimit = function(limit) {
+                const el = document.getElementById('speedLimitDisplay');
+                if (limit && limit > 0) {
+                    document.getElementById('speedLimitValue').textContent = limit;
+                    el.style.display = 'block';
+                } else {
+                    el.style.display = 'none';
+                }
+            };
+        function drawRadarZones() {
+            if (!map.getSource('radar-zones')) return;
+
+            var features = [];
+
+            if (window._currentRadarsData && window._currentRadarsData.length > 0) {
+                window._currentRadarsData.forEach(function (radar) {
+                    var center = [radar.longitude, radar.latitude];
+                    var polygonCoordinates = createGeoJSONCircle(center, window._radarRadiusMeters);
+
+                    features.push({
+                        'type': 'Feature',
+                        'geometry': {
+                            'type': 'Polygon',
+                            'coordinates': polygonCoordinates
+                        }
+                    });
+                });
+            }
+
+            map.getSource('radar-zones').setData({
+                'type': 'FeatureCollection',
+                'features': features
+            });
+        }
+
+        function removeRadarZones() {
+            if (map.getSource('radar-zones')) {
+                map.getSource('radar-zones').setData({
+                    'type': 'FeatureCollection',
+                    'features': []
+                });
+            }
+        }
+        map.on('load', function () {
+
+            const poiLayersToHide = [
+                'poi-label', 
+                'transit-label', 
+                'airport-label', 
+                'settlement-subdivision-label', 
+                'natural-point-label', 
+                'water-point-label', 
+                'poi-parks-label',
+                'poi-scalerank3-label',
+                'poi-scalerank2-label', 
+                'poi-scalerank1-label' 
+            ];
+
+            poiLayersToHide.forEach(layer => {
+                if (map.getLayer(layer)) {
+                    map.setLayoutProperty(layer, 'visibility', 'none');
+                }
+            });
+
+            map.addSource('radar-zones', {
+                'type': 'geojson',
+                'data': { 'type': 'FeatureCollection', 'features': [] }
+            });
+
+            map.addLayer({
+                'id': 'radar-zones-fill',
+                'type': 'fill',
+                'source': 'radar-zones',
+                'layout': {},
+                'paint': {
+                    'fill-color': '#2196F3',
+                    'fill-opacity': 0.3
+                }
+            });
+
+            map.addLayer({
+                'id': 'radar-zones-outline',
+                'type': 'line',
+                'source': 'radar-zones',
+                'layout': {},
+                'paint': {
+                    'line-color': '#1976D2',
+                    'line-width': 2
+                }
+            });
+            
+
+            try {
+                if (window._initialRadars && window._initialRadars.length) {
+                    renderRadars(window._initialRadars);
+                }
+            } catch (e) {
+                console.error('onload renderRadars error', e);
+            }
+        });
+
+        function handleTrackingToggle() {
+            if (window._isTrackingMode) {
+                toggleTrackingMode(false);
+            } else {
+                toggleTrackingMode(true);
+            }
+        }
+
+        function toggleFilter(filterType) {
+            document.getElementById('btnAktivni').className = 'filter-btn inactive';
+            document.getElementById('btnSvi').className = 'filter-btn inactive';
+
+            if (filterType === 'active') {
+                document.getElementById('btnAktivni').className = 'filter-btn active';
+            } else if (filterType === 'today') {
+                document.getElementById('btnSvi').className = 'filter-btn active';
+            } 
+
+            try {
+                window.location.href = 'updateradarfilter://' + filterType;
+            } catch (e) {
+                console.error('Failed to call C#:', e);
+            }
+        }
+
+        window._isMapAnimating = false;
+        window._isTrackingMode = false;
+        window._lastKnownHeading = null;
+        window._waitingForFirstFix = false;
+        window._pendingHeadingAfterAnimation = null;
+
+        function toggleTrackingMode(startTracking) {
+            window._isTrackingMode = startTracking;
+            const button = document.getElementById('btnTrackingToggle');
+            const speedDisplay = document.getElementById('speedDisplay');
+
+            if (startTracking) {
+                button.textContent = 'ZAVRŠI';
+                button.classList.add('active-tracking');
+                speedDisplay.style.display = 'block';
+                document.getElementById('btnSvi').disabled = true;
+                document.getElementById('btnSvi').classList.add('disabled');
+
+                drawRadarZones();
+
+                // Onemogući interakcije
+                map.dragPan.disable();
+                map.dragRotate.disable();
+                map.touchPitch.disable();
+                map.touchZoomRotate.disableRotation();
+                map.scrollZoom.disable();
+                map.doubleClickZoom.disable();
+
+                toggleFilter('active');
+                window._waitingForFirstFix = true;
+
+                setTimeout(() => {
+                    window.location.href = 'updatetrackingmode://true';
+                }, 50);
+
+            } else {
+                window._waitingForFirstFix = false;
+                window._isMapAnimating = false;
+                button.textContent = 'KRENI';
+                button.classList.remove('active-tracking');
+                speedDisplay.style.display = 'none';
+
+                document.getElementById('btnSvi').disabled = false;
+                document.getElementById('btnSvi').classList.remove('disabled');
+
+                map.flyTo({
+                    zoom: 13,
+                    pitch: 0,
+                    bearing: 0,
+                    speed: 1.0,
+                    essential: true
+                });
+
+                map.dragPan.enable();
+                map.dragRotate.enable();
+                map.touchPitch.enable();
+                map.scrollZoom.enable();
+                map.touchZoomRotate.enable();
+                map.doubleClickZoom.enable();
+
+                if (window._userMarker) {
+                    const el = window._userMarker.getElement();
+                    if (el) el.style.transform = 'rotate(0deg)';
+                }
+
+                setTimeout(() => {
+                    window.location.href = 'updatetrackingmode://false';
+                }, 50);
+            }
+        }
+
+        window.updateUserLocation = function (lng, lat, heading, speed) {
+            window._lastKnownHeading = heading;
+
+            if (!window._userMarker) return;
+
+            window._userMarker.setLngLat([lng, lat]);
+
+            const speedEl = document.getElementById('speedValue');
+            if (speedEl) {
+                speedEl.textContent = Math.round(speed);
+            }
+
+            const el = window._userMarker.getElement();
+            if (el) {
+                el.style.transform = 'rotate(' + heading + 'deg)';
+            }
+
+            if (window._isTrackingMode) {
+                if (window._waitingForFirstFix) {
+                    window._waitingForFirstFix = false;
+                    window._isMapAnimating = true;
+                    map.flyTo({
+                        center: [lng, lat],
+                        zoom: 16,
+                        pitch: 45,
+                        bearing: heading,
+                        speed: 3.5,
+                        curve: 1,
+                        essential: true
+                    });
+
+                    map.once('moveend', () => {
+                        window._isMapAnimating = false;
+                    });
+
+                    setTimeout(() => { window._isMapAnimating = false; }, 700);
+                } 
+                else {
+                    if (!window._isMapAnimating) {
+                        map.easeTo({
+                            center: [lng, lat],
+                            bearing: heading,
+                            duration: 300,
+                            easing: (t) => t
+                        });
+                    }
+                }
+            }
+        };
+        
+        function clearRadarMarkers() {
+            try {
+                if (window._radarMarkers && window._radarMarkers.length) {
+                    window._radarMarkers.forEach(function (m) { try { m.remove(); } catch (e) { } });
+                }
+                window._radarMarkers = [];
+            } catch (e) {
+                console.error('clearRadarMarkers error', e);
+            }
+        }
+        
+
+        function addRadarMarker(lng, lat, name, description, speedLimit, stacionaran) {
+            try {
+                var popupContent = '<strong>' + name + '</strong>';
+                if (description && description !== "") {
+                    popupContent += '<br><span>' + description + '</span>';
+                }
+
+                if (speedLimit && speedLimit > 0) {
+                    popupContent += '<br><span class="speed-limit">Ograničenje: <span class="speed-limit-value">' + speedLimit + ' km/h</span></span>';
+                }
+
+                var markerColor = stacionaran ? '#0B2A63' : '#FF0000'; // tamno-plavo za stacionarne
+                var marker = new mapboxgl.Marker({ color: markerColor })
+                    .setLngLat([lng, lat])
+                    .setPopup(new mapboxgl.Popup({ offset: 35 }).setHTML(popupContent))
+                    .addTo(map);
+                window._radarMarkers.push(marker);
+            } catch (e) {
+                console.error('addRadarMarker error', e);
+            }
+        }
+
+        if (typeof renderRadars !== 'function') {
+            function renderRadars(radars) {
+                try {
+                    window._currentRadarsData = radars || [];
+
+                    clearRadarMarkers();
+                    if (!radars || !radars.forEach) return;
+                    radars.forEach(function (r) {
+                            addRadarMarker(r.longitude, r.latitude, r.name, r.description, r.speedLimit, r.stacionaran);
+                    });
+
+                    drawRadarZones();
+
+                } catch (e) {
+                    console.error('renderRadars fallback error', e);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
