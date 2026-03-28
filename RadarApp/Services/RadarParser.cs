@@ -18,7 +18,7 @@ namespace RadarApp.Services
         private readonly HttpClient _httpClient;
         private readonly FirebaseService _firebaseService=new FirebaseService();
         private readonly string _filePath;
-        private const string BaseUrl = "***REMOVED***";
+        private const string BaseUrl = Secrets.URL;
 
         private readonly Dictionary<int, Task<string>> _htmlCache = new Dictionary<int, Task<string>>();
 
@@ -427,7 +427,8 @@ namespace RadarApp.Services
                 .GroupBy(r => new { r.City, r.Time, r.Location })
                 .Select(g => g.First())
                 .ToList();
-        }        private bool CityNameExistsInHtml(string htmlText, string cityName)
+        }
+        private bool CityNameExistsInHtml(string htmlText, string cityName)
         {
             if (string.IsNullOrWhiteSpace(htmlText) || string.IsNullOrWhiteSpace(cityName))
                 return false;

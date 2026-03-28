@@ -6,8 +6,8 @@ namespace RadarApp.Services;
 
 public class RadarHistoryService
 {
-    private readonly string _baseUrl = "https://***REMOVED***/";
-    private readonly string _firebaseApiKey = "***REMOVED***";
+    private readonly string _baseUrl = Secrets.FirebaseBaseUrl;
+    private readonly string _firebaseApiKey = Secrets.FirebaseApiKey;
     private readonly HttpClient _httpClient;
     private readonly JsonSerializerOptions _jsonOptions;
     private string _cachedToken = null;

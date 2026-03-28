@@ -11,8 +11,8 @@ namespace RadarApp.Services
 {
     public class FirebaseService
     {
-        public const string FirebaseBaseUrl= "https://***REMOVED***/radari-sbk";
-        private readonly string _firebaseApiKey = "***REMOVED***";
+        public const string FirebaseBaseUrl= $"{Secrets.FirebaseBaseUrl}radari-sbk";
+        private readonly string _firebaseApiKey = Secrets.FirebaseApiKey;
         private readonly HttpClient _httpClient;
         private string _cachedToken = null;
 

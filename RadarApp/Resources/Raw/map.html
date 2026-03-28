@@ -26,8 +26,9 @@
         <button id="btnSvi" class="filter-btn inactive" onclick="toggleFilter('today')">DANAS</button>
         
     </div>
+    <script src="MapConfig.js"></script>
     <script>
-        mapboxgl.accessToken = '***REMOVED***';
+        mapboxgl.accessToken = MapSettings.accessToken;
 
         const map = new mapboxgl.Map({
             container: 'map',
