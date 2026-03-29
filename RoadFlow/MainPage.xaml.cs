@@ -44,6 +44,8 @@ namespace RoadFlow
 
         private List<CantonPickerItem> _cantonList;
         private CantonPickerItem _currentSelectedItem;
+        private readonly TimeService _timeService;
+        private DateTime _currentDate;
 
         public static readonly DataTemplateSelector RadarFlatItemTemplate = new RadarFlatItemTemplateSelector
         {
@@ -133,7 +135,8 @@ namespace RoadFlow
         public MainPage()
         {
             InitializeComponent();
-            LblCurrentDate.Text = DateTime.Now.ToString("dd.MM.yyyy");
+            _timeService = new TimeService();
+            _ = InitializeDateAsync();
             _parser = new RadarParser();
             _locationService = new LocationTrackingService();
             _alertService = new RadarAlertService();
@@ -147,7 +150,11 @@ namespace RoadFlow
             _ = LoadRadarDataAsync();
             InitializeCantonPicker();
         }
-
+        private async Task InitializeDateAsync()
+        {
+            _currentDate = await _timeService.GetCurrentDateAsync();
+            LblCurrentDate.Text = _currentDate.ToString("dd.MM.yyyy");
+        }
         private void InitializeCantonPicker()
         {
             _cantonList = new List<CantonPickerItem>
@@ -404,11 +411,16 @@ namespace RoadFlow
             ListViewContainer.IsVisible = true;
             MapViewContainer.IsVisible = false;
             _isListViewActive = true;
+            DeviceDisplay.Current.KeepScreenOn = false;
 
             _locationService.StopPeriodicLocationUpdates();
-            _locationService.StopContinuousTracking();
-            _locationService.StopCompass();
-            _alertService.StopAlerts();
+
+            if (!_isTrackingActive)
+            {
+                _locationService.StopContinuousTracking();
+                _locationService.StopCompass();
+                _alertService.StopAlerts();
+            }
         }
 
         private async void OnMapaClicked(object sender, EventArgs e)
@@ -427,6 +439,8 @@ namespace RoadFlow
             ListViewContainer.IsVisible = false;
             MapViewContainer.IsVisible = true;
             _isListViewActive = false;
+           
+            DeviceDisplay.Current.KeepScreenOn = true;
 
             if (_isFirstMapLoad)
             {
@@ -437,12 +451,16 @@ namespace RoadFlow
             {
                 if (_isTrackingActive)
                 {
-                    await _locationService.StartContinuousTrackingAsync();
-                    _locationService.StartCompass();
+                    if (!_locationService.IsTrackingActive)
+                    {
+                        await _locationService.StartContinuousTrackingAsync();
+                        _locationService.StartCompass();
+                    }
                 }
                 else
                 {
                     _locationService.StartPeriodicLocationUpdates();
+                    _locationService.StartCompass();
                 }
             }
         }
@@ -461,7 +479,7 @@ namespace RoadFlow
 
                 _currentRadars = await _parser.ParseAllLocationsAsync();
                 DisplayRadarData(_currentRadars);
-                await _historyService.SaveRadarsForDateAsync(DateTime.Now, _currentRadars);
+                await _historyService.SaveRadarsForDateAsync(_currentDate, _currentRadars);
                 _isFirstListLoad = false;
             }
             catch (Exception ex)

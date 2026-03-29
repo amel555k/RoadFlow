@@ -37,58 +37,59 @@ namespace RoadFlow
             }
         }
 
-     private async Task HandleTrackingModeToggle(bool startTracking)
-{
-    _isTrackingActive = startTracking;
-
-    if (startTracking)
-    {
-        _locationService.StopPeriodicLocationUpdates();
-
-    
-        _= _locationService.StartContinuousTrackingAsync();
-
-        var location = _locationService.CurrentLocation;
-
-        if (location == null)
+        private async Task HandleTrackingModeToggle(bool startTracking)
         {
-            location = await Geolocation.GetLastKnownLocationAsync();
+            _isTrackingActive = startTracking;
 
-            if (location == null)
+            if (startTracking)
             {
-                try
+                _locationService.StopPeriodicLocationUpdates();
+
+            
+                _= _locationService.StartContinuousTrackingAsync();
+                _locationService.StartCompass();
+
+                var location = _locationService.CurrentLocation;
+
+                if (location == null)
                 {
-                    var request = new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(1));
-                    location = await Geolocation.GetLocationAsync(request);
+                    location = await Geolocation.GetLastKnownLocationAsync();
+
+                    if (location == null)
+                    {
+                        try
+                        {
+                            var request = new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(1));
+                            location = await Geolocation.GetLocationAsync(request);
+                        }
+                        catch (Exception ex) 
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Greška pri traženju prve lokacije: {ex.Message}");
+                        }
+                    }
                 }
-                catch (Exception ex) 
+
+                if (location != null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Greška pri traženju prve lokacije: {ex.Message}");
+                    double initialHeading = _locationService.CurrentHeading;
+                    await UpdateUserLocationOnMap(location, initialHeading);
+                    _alertService.CheckProximity(location);
                 }
             }
-        }
+            else
+            {
+                _locationService.StopContinuousTracking();
+                _locationService.StartPeriodicLocationUpdates();
+                _alertService.StopAlerts();
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    await MapView.EvaluateJavaScriptAsync("window.showSpeedLimit(0);");
+                });
 
-        if (location != null)
-        {
-            double initialHeading = _locationService.CurrentHeading;
-            await UpdateUserLocationOnMap(location, initialHeading);
-            _alertService.CheckProximity(location);
+                if (_locationService.CurrentLocation != null)
+                    await UpdateUserLocationOnMap(_locationService.CurrentLocation, 0);
+            }
         }
-    }
-    else
-    {
-        _locationService.StopContinuousTracking();
-        _locationService.StartPeriodicLocationUpdates();
-        _alertService.StopAlerts();
-        await MainThread.InvokeOnMainThreadAsync(async () =>
-        {
-            await MapView.EvaluateJavaScriptAsync("window.showSpeedLimit(0);");
-        });
-
-        if (_locationService.CurrentLocation != null)
-            await UpdateUserLocationOnMap(_locationService.CurrentLocation, 0);
-    }
-}
         private void OnMapNavigated(object? sender, WebNavigatedEventArgs e)
         {
             if (e.Result == WebNavigationResult.Success)

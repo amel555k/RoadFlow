@@ -97,3 +97,9 @@ RoadFlow/
     <img src="Screenshots/historyCalendarAsset.jpg" width="200" alt="History calendar asset"/>
     <img src="Screenshots/historyPageAsset.jpg" width="200" alt="History page"/>
 </p>
+
+---
+
+> **Copyright (c) 2026 Amel Kolasević. All rights reserved.**
+>
+> **No part of this software may be copied, modified, or distributed without the express written permission of the author.**

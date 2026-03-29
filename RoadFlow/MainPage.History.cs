@@ -130,7 +130,7 @@ public partial class MainPage
     {
         try
         {
-            bool todayExists = await _historyService.CheckIfTodayExistsAsync();
+            bool todayExists = await _historyService.CheckIfTodayExistsAsync(_currentDate);
 
             if (!todayExists)
             {
@@ -142,7 +142,7 @@ public partial class MainPage
                     .ToList();
 
                 if (validRadars.Any())
-                    await _historyService.SaveRadarsForDateAsync(DateTime.Today, validRadars);
+                    await _historyService.SaveRadarsForDateAsync(_currentDate, validRadars);
             }
         }
         catch (Exception ex)
@@ -170,11 +170,16 @@ public partial class MainPage
         HistoryViewContainer.IsVisible = true;
         _isListViewActive = false;
         _isHistoryViewActive = true;
+        DeviceDisplay.Current.KeepScreenOn = false;
 
         _locationService.StopPeriodicLocationUpdates();
-        _locationService.StopContinuousTracking();
-        _locationService.StopCompass();
-        _alertService.StopAlerts();
+
+        if (!_isTrackingActive)
+        {
+            _locationService.StopContinuousTracking();
+            _locationService.StopCompass();
+            _alertService.StopAlerts();
+        }
 
         await EnsureTodayDataExistsAsync();
         await LoadCalendarDatesAsync();
@@ -238,7 +243,7 @@ public partial class MainPage
 
             var date = new DateTime(month.Year, month.Month, day);
             bool hasData = _availableHistoryDates.Any(d => d.Date == date.Date);
-            bool isToday = date.Date == DateTime.Today;
+            bool isToday = date.Date == _currentDate;
 
             var frame = new Frame
             {

@@ -49,11 +49,11 @@ public class RadarHistoryService
         return $"{_baseUrl}{path}{separator}auth={token}";
     }
 
-    public async Task<bool> CheckIfTodayExistsAsync()
+    public async Task<bool> CheckIfTodayExistsAsync(DateTime date)
     {
         try
         {
-            string dateKey = DateTime.Today.ToString("yyyy-MM-dd");
+            string dateKey = date.ToString("yyyy-MM-dd");
             var url = await GetAuthenticatedUrl($"history/{dateKey}.json");
             var response = await _httpClient.GetStringAsync(url);
             
