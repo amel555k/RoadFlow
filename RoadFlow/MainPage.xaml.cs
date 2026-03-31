@@ -464,18 +464,21 @@ namespace RoadFlow
                 }
             }
         }
-        private async void OnRefreshClicked(object sender, EventArgs e)
+        private async void OnRadarRefreshing(object sender, EventArgs e)
         {
             await LoadRadarDataAsync();
         }
 
+        
         private async Task LoadRadarDataAsync()
         {
             try
             {
-                LoadingIndicator.IsRunning = true;
-                LoadingIndicator.IsVisible = true;
-                BtnRefresh.IsEnabled = false;
+                if (!RadarRefreshView.IsRefreshing)
+                {
+                    LoadingIndicator.IsRunning = true;
+                    LoadingIndicator.IsVisible = true;
+                }
 
                 _currentRadars = await _parser.ParseAllLocationsAsync();
                 DisplayRadarData(_currentRadars);
@@ -488,9 +491,9 @@ namespace RoadFlow
             }
             finally
             {
+                RadarRefreshView.IsRefreshing = false;
                 LoadingIndicator.IsRunning = false;
                 LoadingIndicator.IsVisible = false;
-                BtnRefresh.IsEnabled = true;
             }
         }
 
@@ -570,6 +573,7 @@ namespace RoadFlow
             var current = Connectivity.NetworkAccess;
             if (current != NetworkAccess.Internet)
             {
+                if (_isMenuOpen) await CloseMenu();
                 await ShowCustomAlert("Nema internet konekcije", "Molimo provjerite da li su uključeni WiFi ili mobilni podaci.", "U REDU");
                 return false;
             }

@@ -47,16 +47,6 @@
                                 HorizontalOptions="Center"
                                 VerticalOptions="Center"/>
                                 
-                        <ImageButton x:Name="BtnRefresh"
-                                Clicked="OnRefreshClicked"
-                                BackgroundColor="transparent"
-                                Source="refresh.png"
-                                HeightRequest="20"
-                                WidthRequest="20"
-                                Padding="2"
-                                CornerRadius="20"
-                                HorizontalOptions="End"
-                                VerticalOptions="Center"/>
                     </Grid>
                     <ActivityIndicator x:Name="LoadingIndicator"
                                        IsRunning="False"
@@ -113,10 +103,14 @@
                             IsVisible="False"
                             ZIndex="1"/>
 
-                    <CollectionView x:Name="RadarListContainer"
-                                    Grid.Row="1"
-                                    Margin="0,5,0,0"
-                                    ItemTemplate="{x:Static local:MainPage.RadarFlatItemTemplate}"/>
+                    <RefreshView x:Name="RadarRefreshView"
+                                Grid.Row="1"
+                                Refreshing="OnRadarRefreshing"
+                                RefreshColor="#3498DB">
+                        <CollectionView x:Name="RadarListContainer"
+                                        Margin="0,5,0,0"
+                                        ItemTemplate="{x:Static local:MainPage.RadarFlatItemTemplate}"/>
+                    </RefreshView>  
 
                 </Grid>
 
